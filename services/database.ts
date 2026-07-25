@@ -20,6 +20,32 @@ function logSupabaseError(context: string, error: any) {
 }
 
 /**
+ * 0. getAllOfficers (Single Ultra-Fast Query for All Officers)
+ */
+export async function getAllOfficers(): Promise<{
+  data: Officer[] | null
+  error: Error | null
+}> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from('officers')
+      .select('*')
+      .order('rank', { ascending: true })
+
+    if (error) {
+      logSupabaseError('getAllOfficers', error)
+      return { data: null, error: new Error(error.message) }
+    }
+
+    return { data: (data || []) as Officer[], error: null }
+  } catch (err: unknown) {
+    const errorObj = err instanceof Error ? err : new Error(String(err))
+    console.error('Unexpected Exception [getAllOfficers]:', errorObj)
+    return { data: null, error: errorObj }
+  }
+}
+
+/**
  * 1. getOfficersByTier
  */
 export async function getOfficersByTier(tier: OfficerTier): Promise<{
@@ -75,7 +101,6 @@ export async function addOfficer(officer: Partial<Officer>): Promise<{
 
 /**
  * 3. updateOfficerDuty
- * Updates an officer's assigned duty / role_type and optional station posting in database.
  */
 export async function updateOfficerDuty(
   pno: string,
