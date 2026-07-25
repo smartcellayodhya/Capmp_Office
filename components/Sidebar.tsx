@@ -64,14 +64,14 @@ export function Sidebar() {
       }`}
     >
       <div>
-        {/* User's Uploaded UP Police Logo & Collapse Toggle */}
+        {/* Dusri Photo UP Police Logo in Circle Container */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-xs">
               <img
                 src="/up-police-logo.png"
                 alt="Uttar Pradesh Police Logo"
-                className="w-full h-full object-contain drop-shadow-xs"
+                className="w-full h-full object-contain"
               />
             </div>
             {!collapsed && (
