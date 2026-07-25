@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { OfficerWithCalculated, PostingHistoryRow } from '@/types/police'
 import { getOfficerProfileWithHistory } from '@/services/database'
-import { mockPostingHistory } from '@/lib/mockData'
 import { X, Calendar, MapPin, ShieldAlert, Clock, Loader2 } from 'lucide-react'
 
 interface TimelineModalProps {
@@ -32,21 +31,16 @@ export function TimelineModal({ officer, onClose }: TimelineModalProps) {
           if (data && data.posting_history && data.posting_history.length > 0) {
             setHistory(data.posting_history)
           } else {
-            // Fallback to mock posting history or default current posting node
-            const mockEntries = mockPostingHistory[officer!.pno]
-            if (mockEntries && mockEntries.length > 0) {
-              setHistory(mockEntries)
-            } else {
-              setHistory([
-                {
-                  id: 'current-node',
-                  officer_pno: officer!.pno || 'N/A',
-                  station_name: officer!.current_posting || 'Current Assignment',
-                  posting_date: officer!.joining_date || new Date().toISOString().slice(0, 10),
-                  duration_months: officer!.tenureMonths || 0
-                }
-              ])
-            }
+            // Default active station node derived from officer record
+            setHistory([
+              {
+                id: 'current-node',
+                officer_pno: officer!.pno || 'N/A',
+                station_name: officer!.current_posting || 'Current Assignment',
+                posting_date: officer!.joining_date || new Date().toISOString().slice(0, 10),
+                duration_months: officer!.tenureMonths || 0
+              }
+            ])
           }
         }
       } catch (err) {
@@ -102,7 +96,7 @@ export function TimelineModal({ officer, onClose }: TimelineModalProps) {
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6">
-          {/* Quick Details Grid (snake_case database fields) */}
+          {/* Quick Details Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="p-3 rounded-xl bg-police-850 border border-police-700/50">
               <span className="text-slate-400 block text-[10px]">Caste Category</span>

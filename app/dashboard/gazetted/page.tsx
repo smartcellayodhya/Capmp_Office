@@ -2,53 +2,52 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { getOfficersByTier, getNodalOfficers } from '@/services/database'
-import { mockOfficers } from '@/lib/mockData'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { FilterState, OfficerWithCalculated } from '@/types/police'
 import { DynamicMetrics } from '@/components/DynamicMetrics'
 import { ChartsSection } from '@/components/ChartsSection'
 import { Filters } from '@/components/Filters'
 import { OfficerTable } from '@/components/OfficerTable'
-import { Loader2, RefreshCw, Database } from 'lucide-react'
+import { Loader2, RefreshCw, Database, ShieldAlert } from 'lucide-react'
 
 export default function GazettedDashboardPage() {
   const [officers, setOfficers] = useState<OfficerWithCalculated[]>([])
-  const [activeNodalCount, setActiveNodalCount] = useState<number>(3)
+  const [activeNodalCount, setActiveNodalCount] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(true)
-  const [supabaseConnected, setSupabaseConnected] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Fetch Gazetted Officers from Supabase
+  // Fetch Gazetted Officers directly from Supabase Database
   const loadGazettedData = async () => {
     setLoading(true)
+    setErrorMessage(null)
+
     try {
+      // 1. Fetch Gazetted Tier Officers from Supabase
       const { data: dbOfficers, error } = await getOfficersByTier('Gazetted')
       if (error) {
         console.error('Supabase Error [Gazetted Page]:', error)
+        setErrorMessage(error.message)
+        setOfficers([])
+      } else if (dbOfficers) {
+        // Enrich real Supabase database records (using snake_case database schema)
+        const enriched = dbOfficers.map((o) => enrichOfficerData(o))
+        setOfficers(enriched)
+      } else {
+        setOfficers([])
       }
 
-      // Also fetch nodal count from Supabase
+      // 2. Fetch Nodal Officers count from Supabase
       const { data: nodalData, error: nodalError } = await getNodalOfficers()
       if (nodalError) {
         console.error('Supabase Error [Nodal Officers Fetch]:', nodalError)
-      } else if (nodalData && nodalData.length > 0) {
+      } else if (nodalData) {
         setActiveNodalCount(nodalData.length)
       }
-
-      if (dbOfficers && dbOfficers.length > 0) {
-        // Enrich real Supabase officers (snake_case)
-        const enriched = dbOfficers.map((o) => enrichOfficerData(o))
-        setOfficers(enriched)
-        setSupabaseConnected(true)
-      } else {
-        // Fallback to mock data if database is empty or not populated yet
-        const rawMock = mockOfficers.filter((o) => o.officer_tier === 'Gazetted')
-        setOfficers(rawMock.map((o) => enrichOfficerData(o)))
-        setSupabaseConnected(false)
-      }
-    } catch (err) {
-      console.error('Catch error in loadGazettedData:', err)
-      const rawMock = mockOfficers.filter((o) => o.officer_tier === 'Gazetted')
-      setOfficers(rawMock.map((o) => enrichOfficerData(o)))
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('Catch Error [Gazetted Page]:', err)
+      setErrorMessage(msg)
+      setOfficers([])
     } finally {
       setLoading(false)
     }
@@ -69,7 +68,7 @@ export default function GazettedDashboardPage() {
     retiringSoonOnly: false
   })
 
-  // Unique Ranks and Roles for filter dropdowns (snake_case)
+  // Unique Ranks and Roles extracted from real Supabase records
   const rankOptions = useMemo(
     () => Array.from(new Set(officers.map((o) => o.rank).filter(Boolean))),
     [officers]
@@ -79,7 +78,7 @@ export default function GazettedDashboardPage() {
     [officers]
   )
 
-  // Filtered officers list
+  // Filtered officers dataset
   const filteredOfficers = useMemo(() => {
     return officers.filter((o) => {
       // Search query (PNO, Name, Current Posting)
@@ -103,10 +102,10 @@ export default function GazettedDashboardPage() {
       // Status filter
       if (filters.status !== 'ALL' && o.status !== filters.status) return false
 
-      // Overstay toggle
+      // Overstay toggle (>36 months)
       if (filters.overstayOnly && !o.isOverstay) return false
 
-      // Retiring soon toggle
+      // Retiring soon toggle (<12 months)
       if (filters.retiringSoonOnly && !o.isRetiringSoon) return false
 
       return true
@@ -115,46 +114,59 @@ export default function GazettedDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Title Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-police-700/40">
         <div>
           <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             Gazetted Officers Cadre (GOs)
           </h2>
           <p className="text-xs text-slate-400">
-            IPS & PPS Cadre Leadership Dashboard • Headquarters Control
+            IPS & PPS Cadre Leadership Dashboard • Live Supabase Database Connection
           </p>
         </div>
         <div className="flex items-center gap-2.5">
           <button
             onClick={loadGazettedData}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-police-800 hover:bg-police-700 text-xs text-slate-300 transition-colors border border-police-700"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-police-800 hover:bg-police-700 text-xs text-slate-200 transition-colors border border-police-700 shadow-sm"
             title="Refresh database records"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
-            <span>Sync</span>
+            <span>Sync Supabase</span>
           </button>
-          <span className={`text-xs font-semibold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
-            supabaseConnected
-              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-              : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-          }`}>
-            <Database className="w-3.5 h-3.5" />
-            {supabaseConnected ? 'Supabase Live' : 'Demo Dataset'}
+          <span className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-emerald-500/10 text-emerald-300 border-emerald-500/30 flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-emerald-400" />
+            Supabase Live
           </span>
         </div>
       </div>
 
+      {/* Loading State */}
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-police-900/60 rounded-2xl border border-police-700/60">
           <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
-          <p className="text-sm font-semibold text-slate-200">Querying Supabase PostgreSQL Database...</p>
-          <p className="text-xs text-slate-400">Fetching Gazetted Officers records & calculating tenure alerts</p>
+          <p className="text-sm font-semibold text-slate-200">Querying Supabase Database...</p>
+          <p className="text-xs text-slate-400">Fetching Gazetted Officers records (`officers` table)</p>
+        </div>
+      ) : errorMessage ? (
+        <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 flex items-center gap-3">
+          <ShieldAlert className="w-6 h-6 text-red-400 shrink-0" />
+          <div>
+            <p className="font-bold">Supabase Query Error</p>
+            <p className="text-xs text-red-300/80">{errorMessage}</p>
+          </div>
+        </div>
+      ) : officers.length === 0 ? (
+        <div className="py-16 text-center bg-police-900/80 rounded-2xl border border-police-700/60 p-8">
+          <ShieldAlert className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-200">No Gazetted Officer Records Found</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
+            No personnel found in Supabase 'officers' table with officer_tier = 'Gazetted'. Upload data to your Supabase project to display records.
+          </p>
         </div>
       ) : (
         <>
-          {/* Dynamic Metrics Cards for Gazetted */}
+          {/* Dynamic Metrics Cards */}
           <DynamicMetrics
             tier="Gazetted"
             officers={officers}
