@@ -77,7 +77,7 @@ export function Sidebar() {
                   Ayodhya Police
                 </h1>
                 <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mt-0.5">
-                  Command & Control
+                  CAMP OFFICE
                 </p>
               </div>
             )}
@@ -93,14 +93,8 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Command Modules Menu */}
+        {/* Command Navigation Menu (Without COMMAND MODULES title text) */}
         <div className="p-3 space-y-1.5">
-          {!collapsed && (
-            <p className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-              Command Modules
-            </p>
-          )}
-
           {navItems.map((item) => {
             const isActive = pathname === item.href || (pathname === '/' && item.href === '/dashboard/live')
             const Icon = item.icon
