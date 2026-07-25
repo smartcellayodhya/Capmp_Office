@@ -12,11 +12,7 @@ import {
   Award,
   Shield,
   ChevronRight,
-  ChevronLeft,
-  Sparkles,
-  Settings,
-  BarChart3,
-  FileSpreadsheet
+  ChevronLeft
 } from 'lucide-react'
 
 export function Sidebar() {
@@ -145,25 +141,6 @@ export function Sidebar() {
             )
           })}
         </div>
-      </div>
-
-      {/* Footer System Status */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50">
-        {!collapsed ? (
-          <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-extrabold text-slate-900 text-[11px]">SSP Ayodhya</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            </div>
-            <p className="text-[10px] text-slate-500 font-semibold">
-              Command HQ Active
-            </p>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center p-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
-        )}
       </div>
     </aside>
   )

@@ -1,13 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { getAllOfficers, getPostingApplications } from '@/services/database'
+import { getAllOfficers } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { getCachedOfficers, setCachedOfficers } from '@/lib/cache'
 import { OfficerWithCalculated } from '@/types/police'
-import { CommandCenter } from '@/components/CommandCenter'
-import { NaturalLanguageQuery } from '@/components/NaturalLanguageQuery'
-import { AIInsightsPanel } from '@/components/AIInsightsPanel'
 import { ChartsSection } from '@/components/ChartsSection'
 import { FloatingAIAssistant } from '@/components/FloatingAIAssistant'
 import { AddOfficerModal } from '@/components/AddOfficerModal'
@@ -28,20 +25,14 @@ import Link from 'next/link'
 export default function LiveDashboardPage() {
   const [allOfficers, setAllOfficers] = useState<OfficerWithCalculated[]>([])
   const [loading, setLoading] = useState<boolean>(true)
-  const [refreshing, setRefreshing] = useState<boolean>(false)
-  const [pendingAppsCount, setPendingAppsCount] = useState<number>(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedOfficerForTimeline, setSelectedOfficerForTimeline] = useState<OfficerWithCalculated | null>(null)
 
-  const [activeAlertKey, setActiveAlertKey] = useState<string>('ALL')
-
   // Fast fetch using 0ms Instant Cache + SWR
   const loadData = useCallback(async (isManualRefresh = false) => {
-    if (isManualRefresh) setRefreshing(true)
-
     // Step 1: Instant cache load (0ms)
     const cached = getCachedOfficers()
     if (cached && cached.length > 0) {
@@ -51,10 +42,7 @@ export default function LiveDashboardPage() {
 
     // Step 2: Background sync from Supabase
     try {
-      const [officersRes, appsRes] = await Promise.all([
-        getAllOfficers(),
-        getPostingApplications()
-      ])
+      const officersRes = await getAllOfficers()
 
       if (officersRes.error) {
         if (!cached || cached.length === 0) setErrorMessage(officersRes.error.message)
@@ -64,16 +52,11 @@ export default function LiveDashboardPage() {
         setCachedOfficers(enriched)
         setErrorMessage(null)
       }
-
-      if (appsRes.data) {
-        setPendingAppsCount(appsRes.data.filter((a) => a.status === 'Pending').length)
-      }
     } catch (err: any) {
       console.error('Background sync notice:', err)
       if (!cached || cached.length === 0) setErrorMessage(err.message || 'Fetch failed')
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
   }, [])
 
@@ -105,7 +88,7 @@ export default function LiveDashboardPage() {
   }, [allOfficers, activeForce])
 
   return (
-    <div className="space-y-8 pb-24 pt-2">
+    <div className="space-y-6 pb-12 pt-2">
       {loading && allOfficers.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -196,32 +179,10 @@ export default function LiveDashboardPage() {
             </div>
           </div>
 
-          {/* ROW 2: THE TWO CHARTS */}
+          {/* ROW 2: THE TWO CHARTS (Bar Chart on left 2-cols, Donut Chart on right 1-col) */}
           <ChartsSection officers={activeForce} tierName="Entire District Force" />
 
-          {/* ROW 3: AI SEARCH BAR + OPERATIONAL ALERTS & AI INSIGHTS (Breathe Room mt-8 - Instruction 4) */}
-          <div className="space-y-6 mt-8">
-            <NaturalLanguageQuery
-              officers={allOfficers}
-              onSelectFilterResult={(results) => {
-                setAllOfficers(results)
-              }}
-            />
-
-            <CommandCenter
-              officers={allOfficers}
-              pendingAppsCount={pendingAppsCount}
-              onSelectFilter={(key) => setActiveAlertKey(key)}
-              activeFilter={activeAlertKey}
-            />
-
-            <AIInsightsPanel
-              officers={activeForce}
-              onExecuteAction={() => {}}
-            />
-          </div>
-
-          {/* FLOATING AI ASSISTANT COPILOT (Independent Z-[9999] - Instruction 3) */}
+          {/* FLOATING AI ASSISTANT COPILOT */}
           <FloatingAIAssistant officers={allOfficers} />
         </>
       )}
