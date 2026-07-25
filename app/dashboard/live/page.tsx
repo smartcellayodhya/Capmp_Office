@@ -5,13 +5,11 @@ import { getAllOfficers, getPostingApplications } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { getCachedOfficers, setCachedOfficers } from '@/lib/cache'
 import { OfficerWithCalculated, FilterState } from '@/types/police'
-import { Header } from '@/components/Header'
 import { CommandCenter } from '@/components/CommandCenter'
 import { NaturalLanguageQuery } from '@/components/NaturalLanguageQuery'
 import { AIInsightsPanel } from '@/components/AIInsightsPanel'
 import { StickyFilterToolbar } from '@/components/StickyFilterToolbar'
 import { ChartsSection } from '@/components/ChartsSection'
-import { ActivityTimeline } from '@/components/ActivityTimeline'
 import { OfficerTable } from '@/components/OfficerTable'
 import { FloatingAIAssistant } from '@/components/FloatingAIAssistant'
 import { AddOfficerModal } from '@/components/AddOfficerModal'
@@ -170,14 +168,7 @@ export default function LiveDashboardPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* 1. SINGLE SLEEK TOP HEADER (No duplicates!) */}
-      <Header
-        activeTierName="Ayodhya Police Command Office"
-        officers={allOfficers}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        onRefresh={() => loadData(true)}
-        onSelectOfficer={(o) => setSelectedOfficerForTimeline(o)}
-      />
+      {/* NO HEADER COMPONENT HERE - Header is persisted at Layout level (app/layout.tsx) */}
 
       {loading && allOfficers.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
@@ -200,7 +191,7 @@ export default function LiveDashboardPage() {
         </div>
       ) : (
         <>
-          {/* ROW 1: THE 6 MAIN COLORED METRIC CARDS (Uniform height & size - Instruction 3) */}
+          {/* ROW 1: THE 6 MAIN COLORED METRIC CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             {/* 1. Total Force */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32">
@@ -269,12 +260,11 @@ export default function LiveDashboardPage() {
             </div>
           </div>
 
-          {/* ROW 2: THE TWO CHARTS (Bar Chart on left 2-cols, Clean 5-Category Donut Chart on right 1-col) */}
+          {/* ROW 2: THE TWO CHARTS */}
           <ChartsSection officers={activeForce} tierName="Entire District Force" />
 
-          {/* ROW 3: SLEEK SLIM AI SEARCH BAR + OPERATIONAL ALERTS & AI INSIGHTS */}
+          {/* ROW 3: AI SEARCH BAR + OPERATIONAL ALERTS & AI INSIGHTS */}
           <div className="space-y-6">
-            {/* Sleek Slim AI Search Bar (Instruction 3) */}
             <NaturalLanguageQuery
               officers={allOfficers}
               onSelectFilterResult={(results) => {
@@ -282,7 +272,6 @@ export default function LiveDashboardPage() {
               }}
             />
 
-            {/* Today's Operational Alerts Grid */}
             <CommandCenter
               officers={allOfficers}
               pendingAppsCount={pendingAppsCount}
@@ -290,7 +279,6 @@ export default function LiveDashboardPage() {
               activeFilter={activeAlertKey}
             />
 
-            {/* AI Insights Recommendations */}
             <AIInsightsPanel
               officers={activeForce}
               onExecuteAction={(actionKey) => {
