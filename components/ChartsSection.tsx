@@ -25,18 +25,18 @@ const CASTE_COLORS: Record<string, string> = {
   General: '#3B82F6', // Blue
   OBC: '#10B981',     // Emerald
   SC: '#F59E0B',      // Amber
-  ST: '#8B5CF6'       // Purple
+  ST: '#8B5CF6',      // Purple
+  'N/A': '#94A3B8'    // Slate
 }
 
 const BAR_COLOR = '#D4AF37' // UP Police Gold accent
 
-export function ChartsSection({ officers, tierName }: ChartsSectionProps) {
-  // Rank Distribution Data
+export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
+  // Rank Distribution Data (using snake_case rank property)
   const rankData = useMemo(() => {
     const counts: Record<string, number> = {}
     officers.forEach((o) => {
-      // Abbreviate long rank strings for clean X-axis display
-      let shortRank = o.rank
+      let shortRank = o.rank || 'Unassigned'
       if (shortRank.includes('Senior Superintendent')) shortRank = 'SSP'
       else if (shortRank.includes('Additional Superintendent') || shortRank.includes('Addl SP')) shortRank = 'Addl SP'
       else if (shortRank.includes('Deputy SP') || shortRank.includes('Circle Officer')) shortRank = 'CO / DSP'
@@ -50,13 +50,12 @@ export function ChartsSection({ officers, tierName }: ChartsSectionProps) {
     return Object.entries(counts).map(([name, count]) => ({ name, count }))
   }, [officers])
 
-  // Caste Category Distribution Data
+  // Caste Category Distribution Data (using snake_case caste_category property)
   const casteData = useMemo(() => {
     const counts: Record<string, number> = { General: 0, OBC: 0, SC: 0, ST: 0 }
     officers.forEach((o) => {
-      if (counts[o.caste_category] !== undefined) {
-        counts[o.caste_category] += 1
-      }
+      const category = o.caste_category || 'General'
+      counts[category] = (counts[category] || 0) + 1
     })
 
     return Object.entries(counts).map(([name, count]) => ({

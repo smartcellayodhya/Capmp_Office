@@ -23,32 +23,40 @@ interface DynamicMetricsProps {
 
 export function DynamicMetrics({
   tier,
-  officers,
-  pendingApplicationsCount = 2,
-  activeNodalCount = 3
+  officers = [],
+  pendingApplicationsCount = 0,
+  activeNodalCount = 0
 }: DynamicMetricsProps) {
   const isGazetted = tier === 'Gazetted'
 
-  // Filter officers for active tier
-  const tierOfficers = officers.filter((o) => o.officer_tier === tier)
+  // Filter officers for active tier using snake_case officer_tier
+  const tierOfficers = officers.filter((o) => (o.officer_tier || 'Non-Gazetted') === tier)
 
   // Calculations for Gazetted View
   const totalGOs = tierOfficers.length
-  const activeCOs = tierOfficers.filter(
-    (o) => o.role_type === 'Circle Officer' || o.rank.includes('Circle Officer') || o.rank.includes('Deputy SP')
-  ).length
-  const addlSPs = tierOfficers.filter(
-    (o) => o.rank.includes('Addl SP') || o.rank.includes('Additional Superintendent')
-  ).length
+  const activeCOs = tierOfficers.filter((o) => {
+    const role = (o.role_type || '').toLowerCase()
+    const r = (o.rank || '').toLowerCase()
+    return role.includes('circle officer') || r.includes('circle officer') || r.includes('deputy sp') || r.includes('dsp') || r.includes('co')
+  }).length
+
+  const addlSPs = tierOfficers.filter((o) => {
+    const r = (o.rank || '').toLowerCase()
+    return r.includes('addl sp') || r.includes('additional superintendent')
+  }).length
 
   // Calculations for Non-Gazetted View
   const totalNGOs = tierOfficers.length
-  const activeSHOs = tierOfficers.filter(
-    (o) => o.role_type === 'Thana Prabhari' || o.rank.includes('SHO') || o.rank.includes('Inspector')
-  ).length
-  const chowkiIncharges = tierOfficers.filter(
-    (o) => o.role_type === 'Chowki Incharge'
-  ).length
+  const activeSHOs = tierOfficers.filter((o) => {
+    const role = (o.role_type || '').toLowerCase()
+    const r = (o.rank || '').toLowerCase()
+    return role.includes('thana prabhari') || r.includes('sho') || r.includes('inspector')
+  }).length
+
+  const chowkiIncharges = tierOfficers.filter((o) => {
+    const role = (o.role_type || '').toLowerCase()
+    return role.includes('chowki incharge')
+  }).length
 
   // Universal alerts
   const overstayCount = tierOfficers.filter((o) => o.isOverstay).length
@@ -163,7 +171,7 @@ export function DynamicMetrics({
         })}
       </div>
 
-      {/* Critical Alert Bar for Overstay & Retirement */}
+      {/* Critical Alert Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-red-950/40 via-police-900 to-amber-950/40 border border-red-500/30 text-xs">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">

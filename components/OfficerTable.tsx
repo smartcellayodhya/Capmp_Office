@@ -7,10 +7,8 @@ import {
   ShieldAlert, 
   AlertTriangle, 
   Clock, 
-  UserCheck, 
-  ChevronRight, 
-  Eye,
-  Award
+  Award, 
+  Eye
 } from 'lucide-react'
 
 interface OfficerTableProps {
@@ -22,7 +20,7 @@ export function OfficerTable({ officers }: OfficerTableProps) {
 
   return (
     <div className="bg-police-900/80 backdrop-blur-sm border border-police-700/60 rounded-2xl overflow-hidden shadow-xl">
-      {/* Table Top Header Bar */}
+      {/* Table Header Bar */}
       <div className="p-4 border-b border-police-700/60 flex items-center justify-between bg-police-950/50">
         <div>
           <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
@@ -37,7 +35,7 @@ export function OfficerTable({ officers }: OfficerTableProps) {
         </span>
       </div>
 
-      {/* Main Table */}
+      {/* Main Data Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
@@ -57,54 +55,54 @@ export function OfficerTable({ officers }: OfficerTableProps) {
                 <td colSpan={7} className="py-12 text-center text-slate-400">
                   <div className="flex flex-col items-center gap-2">
                     <ShieldAlert className="w-8 h-8 text-slate-500" />
-                    <p className="font-semibold text-slate-300">No officers found matching the selected filter criteria.</p>
-                    <p className="text-[11px] text-slate-500">Try adjusting your filters or resetting the search.</p>
+                    <p className="font-semibold text-slate-300">No officers found matching the active criteria or Supabase database is empty.</p>
+                    <p className="text-[11px] text-slate-500">Ensure real data exists in Supabase 'officers' table.</p>
                   </div>
                 </td>
               </tr>
             ) : (
               officers.map((o) => (
                 <tr
-                  key={o.id}
+                  key={o.id || o.pno}
                   onClick={() => setSelectedOfficer(o)}
                   className="hover:bg-police-800/60 transition-colors cursor-pointer group"
                 >
                   {/* PNO & Batch */}
                   <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-100">{o.pno}</div>
+                    <div className="font-bold text-slate-100">{o.pno || 'N/A'}</div>
                     <span className="inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                      {o.batchYear}
+                      {o.batchYear || 'N/A'}
                     </span>
                   </td>
 
                   {/* Officer Name & Rank */}
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
-                      {o.name}
+                      {o.name || 'Unknown Officer'}
                     </div>
-                    <div className="text-[11px] text-slate-400">{o.rank}</div>
+                    <div className="text-[11px] text-slate-400">{o.rank || 'N/A'}</div>
                   </td>
 
                   {/* Tier & Caste */}
                   <td className="py-3.5 px-4">
-                    <div className="font-medium text-slate-300">{o.officer_tier}</div>
+                    <div className="font-medium text-slate-300">{o.officer_tier || 'N/A'}</div>
                     <span className="text-[10px] font-semibold text-slate-400 bg-police-800 px-2 py-0.5 rounded border border-police-700">
-                      {o.caste_category}
+                      {o.caste_category || 'N/A'}
                     </span>
                   </td>
 
-                  {/* Current Posting & Role */}
+                  {/* Current Posting & Role (snake_case) */}
                   <td className="py-3.5 px-4 max-w-xs">
-                    <div className="font-semibold text-slate-200 truncate" title={o.current_posting}>
-                      {o.current_posting}
+                    <div className="font-semibold text-slate-200 truncate" title={o.current_posting || 'N/A'}>
+                      {o.current_posting || 'N/A'}
                     </div>
-                    <div className="text-[11px] text-amber-400/80">{o.role_type}</div>
+                    <div className="text-[11px] text-amber-400/80">{o.role_type || 'N/A'}</div>
                   </td>
 
                   {/* Tenure & Overstay Alert */}
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-slate-200">
-                      {o.tenureMonths} Months
+                      {o.tenureMonths ?? 0} Months
                     </div>
                     {o.isOverstay ? (
                       <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse">
@@ -125,7 +123,7 @@ export function OfficerTable({ officers }: OfficerTableProps) {
                           o.status === 'Active' ? 'bg-emerald-400' : o.status === 'Anumodit' ? 'bg-blue-400' : 'bg-amber-400'
                         }`}
                       />
-                      <span className="font-semibold text-slate-200">{o.status}</span>
+                      <span className="font-semibold text-slate-200">{o.status || 'Active'}</span>
                     </div>
 
                     {o.isRetiringUrgent ? (
@@ -139,7 +137,7 @@ export function OfficerTable({ officers }: OfficerTableProps) {
                     ) : null}
                   </td>
 
-                  {/* Action Button */}
+                  {/* Action Trigger */}
                   <td className="py-3.5 px-4 text-right">
                     <button
                       type="button"
@@ -160,7 +158,7 @@ export function OfficerTable({ officers }: OfficerTableProps) {
         </table>
       </div>
 
-      {/* Timeline Modal */}
+      {/* Career Timeline Modal */}
       {selectedOfficer && (
         <TimelineModal
           officer={selectedOfficer}
