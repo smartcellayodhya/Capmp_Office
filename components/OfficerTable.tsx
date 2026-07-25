@@ -3,20 +3,29 @@
 import { useState } from 'react'
 import { OfficerWithCalculated } from '@/types/police'
 import { TimelineModal } from './TimelineModal'
+import { TransferOutModal } from './TransferOutModal'
 import { 
   ShieldAlert, 
   AlertTriangle, 
   Clock, 
   Award, 
-  Eye
+  Eye,
+  ExternalLink,
+  Trash2
 } from 'lucide-react'
 
 interface OfficerTableProps {
-  officers: OfficerWithCalculated[]
+  officers?: OfficerWithCalculated[]
+  onRefresh?: () => void
+  onDeleteOfficer?: (pno: string) => void
 }
 
-export function OfficerTable({ officers = [] }: OfficerTableProps) {
+export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: OfficerTableProps) {
   const [selectedOfficer, setSelectedOfficer] = useState<OfficerWithCalculated | null>(null)
+  const [transferOfficer, setTransferOfficer] = useState<OfficerWithCalculated | null>(null)
+
+  // Filter out Transferred officers from default active view
+  const activeOfficers = officers.filter((o) => o.status !== 'Transferred')
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
@@ -27,15 +36,15 @@ export function OfficerTable({ officers = [] }: OfficerTableProps) {
             <Award className="w-4 h-4 text-blue-600" /> Active Personnel List
           </h3>
           <p className="text-[11px] text-slate-500 font-medium">
-            Click on any officer row to inspect their complete career timeline
+            Click on any officer row to inspect complete career timeline or perform transfers
           </p>
         </div>
         <span className="text-xs font-bold text-slate-700 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-          Showing {officers.length} Officer(s)
+          Showing {activeOfficers.length} Active Officer(s)
         </span>
       </div>
 
-      {/* Main Data Table - Crisp Light Theme */}
+      {/* Main Data Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
@@ -50,22 +59,22 @@ export function OfficerTable({ officers = [] }: OfficerTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {officers.length === 0 ? (
+            {activeOfficers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <ShieldAlert className="w-8 h-8 text-slate-400" />
-                    <p className="font-bold text-slate-800">No officers found matching the active criteria or database is empty.</p>
-                    <p className="text-[11px] text-slate-500">Ensure personnel records exist in Supabase 'officers' table.</p>
+                    <p className="font-bold text-slate-800">No active officers found matching criteria.</p>
+                    <p className="text-[11px] text-slate-500">Click "+ Add New Officer" above to add records.</p>
                   </div>
                 </td>
               </tr>
             ) : (
-              officers.map((o) => (
+              activeOfficers.map((o) => (
                 <tr
                   key={o.id || o.pno}
-                  onClick={() => setSelectedOfficer(o)}
                   className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                  onClick={() => setSelectedOfficer(o)}
                 >
                   {/* PNO & Batch */}
                   <td className="py-3.5 px-4">
@@ -137,19 +146,42 @@ export function OfficerTable({ officers = [] }: OfficerTableProps) {
                     ) : null}
                   </td>
 
-                  {/* Action Trigger */}
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedOfficer(o)
-                      }}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-blue-700 border border-slate-300 transition-all shadow-sm"
-                      title="View Officer Career Timeline"
-                    >
-                      <Eye className="w-4 h-4 text-blue-600" />
-                    </button>
+                  {/* Action Triggers */}
+                  <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* Transfer Out Button */}
+                      <button
+                        type="button"
+                        onClick={() => setTransferOfficer(o)}
+                        className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1"
+                        title="Transfer Out to another district/unit"
+                      >
+                        <ExternalLink className="w-3 h-3 text-amber-700" />
+                        <span>Transfer</span>
+                      </button>
+
+                      {/* View Career Timeline Button */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOfficer(o)}
+                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-blue-700 border border-slate-300 transition-all"
+                        title="View Career Timeline"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-blue-600" />
+                      </button>
+
+                      {/* Delete Officer Record */}
+                      {onDeleteOfficer && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteOfficer(o.pno)}
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 border border-slate-200 transition-colors"
+                          title="Delete Officer Record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -163,6 +195,17 @@ export function OfficerTable({ officers = [] }: OfficerTableProps) {
         <TimelineModal
           officer={selectedOfficer}
           onClose={() => setSelectedOfficer(null)}
+        />
+      )}
+
+      {/* Transfer Out Modal */}
+      {transferOfficer && (
+        <TransferOutModal
+          officer={transferOfficer}
+          onClose={() => setTransferOfficer(null)}
+          onSuccess={() => {
+            if (onRefresh) onRefresh()
+          }}
         />
       )}
     </div>

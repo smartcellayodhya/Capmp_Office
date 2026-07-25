@@ -11,8 +11,8 @@ export interface OfficerWithCalculated extends OfficerRow {
   isOverstay: boolean
   retirementYearsRemaining: number
   retirementMonthsRemaining: number
-  isRetiringSoon: boolean // <= 12 months
-  isRetiringUrgent: boolean // <= 6 months
+  isRetiringSoon: boolean
+  isRetiringUrgent: boolean
 }
 
 export interface FilterState {

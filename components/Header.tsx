@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, Clock, MapPin, User } from 'lucide-react'
+import { Bell, Clock, MapPin, User, ShieldCheck } from 'lucide-react'
 
 interface HeaderProps {
   activeTierName?: string
-  onSearchChange?: (val: string) => void
 }
 
-export function Header({ activeTierName = 'Gazetted Officers Cadre', onSearchChange }: HeaderProps) {
+export function Header({ activeTierName = 'Ayodhya Police Personnel Roster' }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState<string>('')
 
   useEffect(() => {
@@ -35,7 +34,7 @@ export function Header({ activeTierName = 'Gazetted Officers Cadre', onSearchCha
   }, [])
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 px-6 py-3.5 shadow-sm">
+    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 px-6 py-3.5 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left Title & Location Rebranding */}
         <div>
@@ -43,12 +42,13 @@ export function Header({ activeTierName = 'Gazetted Officers Cadre', onSearchCha
             <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
               {activeTierName}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-              Active Control
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              Portal Active
             </span>
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-500 mt-1 font-medium">
-            <span className="flex items-center gap-1.5 text-slate-700 font-semibold">
+            <span className="flex items-center gap-1.5 text-slate-800 font-bold">
               <MapPin className="w-3.5 h-3.5 text-blue-600" /> Camp Office, SSP Ayodhya
             </span>
             <span className="flex items-center gap-1.5 border-l border-slate-200 pl-4 text-slate-500">
@@ -78,7 +78,7 @@ export function Header({ activeTierName = 'Gazetted Officers Cadre', onSearchCha
             </div>
             <div className="hidden sm:block">
               <p className="text-xs font-bold text-slate-900">SSP Ayodhya</p>
-              <p className="text-[10px] text-slate-500 font-medium">Camp Office</p>
+              <p className="text-[10px] text-slate-500 font-medium">Camp Office Admin</p>
             </div>
           </div>
         </div>

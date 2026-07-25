@@ -6,10 +6,10 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type OfficerTier = 'Gazetted' | 'Non-Gazetted'
+export type OfficerTier = 'Gazetted' | 'Non-Gazetted' | 'Camp Staff'
 export type CasteCategory = 'General' | 'OBC' | 'SC' | 'ST'
 export type ApplicationStatus = 'Pending' | 'Approved' | 'Rejected'
-export type OfficerStatus = 'Active' | 'On Leave' | 'Suspended' | 'Anumodit' | 'Transfer Pending'
+export type OfficerStatus = 'Active' | 'On Leave' | 'Suspended' | 'Anumodit' | 'Transfer Pending' | 'Transferred'
 
 export interface Database {
   public: {
@@ -27,6 +27,8 @@ export interface Database {
           dob: string
           joining_date: string
           status: OfficerStatus
+          mobile_number?: string | null
+          seat_assigned?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -42,6 +44,8 @@ export interface Database {
           dob: string
           joining_date: string
           status?: OfficerStatus
+          mobile_number?: string | null
+          seat_assigned?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -57,6 +61,8 @@ export interface Database {
           dob?: string
           joining_date?: string
           status?: OfficerStatus
+          mobile_number?: string | null
+          seat_assigned?: string | null
           updated_at?: string
         }
       }
@@ -142,13 +148,11 @@ export interface Database {
   }
 }
 
-// Convenient export types
 export type Officer = Database['public']['Tables']['officers']['Row']
 export type PostingHistory = Database['public']['Tables']['posting_history']['Row']
 export type PostingApplication = Database['public']['Tables']['posting_applications']['Row']
 export type NodalOfficer = Database['public']['Tables']['nodal_officers']['Row']
 
-// Joined type for single officer profile with career history
 export type OfficerProfileWithHistory = Officer & {
   posting_history: PostingHistory[]
 }

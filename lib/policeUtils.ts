@@ -1,11 +1,6 @@
 import * as XLSX from 'xlsx'
 import { OfficerRow, OfficerWithCalculated } from '@/types/police'
 
-/**
- * Requirement 2.1: Batch Year Calculation
- * Extracts the first 2 digits of the `pno` string to dynamically display "Batch Year".
- * E.g., '182050012' -> '2018 Batch', '041029834' -> '2004 Batch', '981290342' -> '1998 Batch'
- */
 export function getBatchYear(pno: string): string {
   if (!pno || typeof pno !== 'string' || pno.length < 2) return 'N/A'
   const digits = pno.substring(0, 2)
@@ -16,11 +11,6 @@ export function getBatchYear(pno: string): string {
   return `${fullYear} Batch`
 }
 
-/**
- * Requirement 2.2: Tenure & Overstay Alert
- * Compares current posting joining date.
- * If time spent in current_posting exceeds 36 months (3 years), flag with high-priority "Overstay / Transfer Due".
- */
 export function calculateTenureMonths(joiningPostingDate?: string | null): number {
   if (!joiningPostingDate) return 0
   const postingDate = new Date(joiningPostingDate)
@@ -36,11 +26,6 @@ export function checkOverstay(tenureMonths: number): boolean {
   return tenureMonths >= 36
 }
 
-/**
- * Requirement 2.3: Retirement Tracker
- * Uses `dob` to calculate upcoming retirements within the next 6 to 12 months.
- * UP Police superannuation age is 60 years.
- */
 export function getRetirementInfo(dob?: string | null) {
   if (!dob) {
     return { retirementYearsRemaining: 0, retirementMonthsRemaining: 0, isRetiringSoon: false, isRetiringUrgent: false }
@@ -66,10 +51,6 @@ export function getRetirementInfo(dob?: string | null) {
   }
 }
 
-/**
- * Enriches raw officer record from Supabase database (snake_case) with calculated logic fields
- * Gracefully handles null/undefined properties with "N/A" fallbacks.
- */
 export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: string): OfficerWithCalculated {
   const safeOfficer: OfficerRow = {
     id: officer.id || 'N/A',
@@ -83,6 +64,8 @@ export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: st
     dob: officer.dob || '',
     joining_date: officer.joining_date || '',
     status: officer.status || 'Active',
+    mobile_number: officer.mobile_number || 'N/A',
+    seat_assigned: officer.seat_assigned || 'Unassigned Desk',
     created_at: officer.created_at,
     updated_at: officer.updated_at
   }
@@ -101,11 +84,7 @@ export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: st
   }
 }
 
-/**
- * Requirement 4: One-Click Excel Export
- * Exports currently filtered table data to an Excel (.xlsx) file using the `xlsx` library.
- */
-export function exportOfficersToExcel(officers: OfficerWithCalculated[], filename = 'UP_Police_Officers_Report.xlsx') {
+export function exportOfficersToExcel(officers: OfficerWithCalculated[], filename = 'Ayodhya_Police_Personnel_Report.xlsx') {
   const exportData = officers.map((o) => ({
     'PNO Number': o.pno || 'N/A',
     'Batch Year': o.batchYear || 'N/A',
@@ -115,6 +94,8 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     'Role Type': o.role_type || 'N/A',
     'Caste Category': o.caste_category || 'N/A',
     'Current Posting': o.current_posting || 'N/A',
+    'Seat Assigned': o.seat_assigned || 'Unassigned',
+    'Mobile Number': o.mobile_number || 'N/A',
     'Tenure (Months)': o.tenureMonths ?? 0,
     'Overstay Status': o.isOverstay ? 'OVERSTAY (>36 Mos)' : 'Normal',
     'Retirement Status': o.isRetiringUrgent ? 'Urgent (<6 Mos)' : o.isRetiringSoon ? 'Retiring Soon (<12 Mos)' : 'Regular',
@@ -126,20 +107,22 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
   const worksheet = XLSX.utils.json_to_sheet(exportData)
 
   const colWidths = [
-    { wch: 14 }, // PNO
-    { wch: 12 }, // Batch
-    { wch: 24 }, // Name
-    { wch: 18 }, // Rank
-    { wch: 15 }, // Tier
-    { wch: 18 }, // Role
-    { wch: 14 }, // Caste
-    { wch: 25 }, // Posting
-    { wch: 15 }, // Tenure
-    { wch: 20 }, // Overstay
-    { wch: 22 }, // Retirement
-    { wch: 12 }, // Status
-    { wch: 14 }, // DOB
-    { wch: 14 }  // Joining Date
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 24 },
+    { wch: 18 },
+    { wch: 15 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 25 },
+    { wch: 20 },
+    { wch: 15 },
+    { wch: 15 },
+    { wch: 20 },
+    { wch: 22 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 14 }
   ]
   worksheet['!cols'] = colWidths
 

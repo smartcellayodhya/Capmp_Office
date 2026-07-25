@@ -5,25 +5,34 @@ import { ExportButton } from './ExportButton'
 import { 
   Search, 
   RotateCcw, 
-  AlertTriangle 
+  AlertTriangle,
+  UserPlus,
+  Upload,
+  Trash2
 } from 'lucide-react'
 
 interface FiltersProps {
   filters: FilterState
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>
-  rankOptions: string[]
-  roleOptions: string[]
-  filteredOfficers: OfficerWithCalculated[]
+  rankOptions?: string[]
+  roleOptions?: string[]
+  filteredOfficers?: OfficerWithCalculated[]
   tierName: string
+  onAddClick?: () => void
+  onBulkUploadClick?: () => void
+  onBulkDeleteClick?: () => void
 }
 
 export function Filters({
   filters,
   setFilters,
-  rankOptions,
+  rankOptions = [],
   roleOptions = [],
   filteredOfficers = [],
-  tierName
+  tierName,
+  onAddClick,
+  onBulkUploadClick,
+  onBulkDeleteClick
 }: FiltersProps) {
   const handleReset = () => {
     setFilters({
@@ -48,17 +57,61 @@ export function Filters({
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-      {/* Top Search Bar & Export Button */}
+      {/* Top Bar: Action Buttons & Excel Export */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+        {/* Left Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {onAddClick && (
+            <button
+              type="button"
+              onClick={onAddClick}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Add New Record</span>
+            </button>
+          )}
+
+          {onBulkUploadClick && (
+            <button
+              type="button"
+              onClick={onBulkUploadClick}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5 text-slate-600" />
+              <span>Bulk Upload (CSV/Excel)</span>
+            </button>
+          )}
+
+          {onBulkDeleteClick && (
+            <button
+              type="button"
+              onClick={onBulkDeleteClick}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 font-bold text-xs border border-rose-200 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>Bulk Delete</span>
+            </button>
+          )}
+        </div>
+
+        {/* Right Excel Export */}
+        <div className="flex items-center gap-2">
+          <ExportButton officers={filteredOfficers} tierName={tierName} />
+        </div>
+      </div>
+
+      {/* Search & Reset Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Search Bar */}
+        {/* Search Input */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by Officer Name, PNO Number (e.g., 182050012), or Current Posting..."
+            placeholder="Search by Officer Name, PNO Number (e.g. 182050012), or Current Posting..."
             value={filters.searchQuery}
             onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
-            className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all font-medium"
+            className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all font-medium"
           />
           {filters.searchQuery && (
             <button
@@ -70,26 +123,20 @@ export function Filters({
           )}
         </div>
 
-        {/* Action Controls & Excel Export */}
-        <div className="flex items-center gap-2.5">
-          {isFiltered && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs border border-slate-300 transition-colors font-semibold"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset</span>
-            </button>
-          )}
-
-          <ExportButton officers={filteredOfficers} tierName={tierName} />
-        </div>
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs border border-slate-300 transition-colors font-semibold"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Filters</span>
+          </button>
+        )}
       </div>
 
-      {/* Dropdown Filters Grid - Light Theme */}
+      {/* Dropdown Filters Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-200">
-        {/* Rank Filter */}
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Rank
@@ -108,7 +155,6 @@ export function Filters({
           </select>
         </div>
 
-        {/* Caste Category Filter */}
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Caste Category
@@ -126,7 +172,6 @@ export function Filters({
           </select>
         </div>
 
-        {/* Role Type Filter */}
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Role Assignment
@@ -145,7 +190,6 @@ export function Filters({
           </select>
         </div>
 
-        {/* Status Filter */}
         <div>
           <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Service Status
@@ -160,11 +204,9 @@ export function Filters({
             <option value="Anumodit">Anumodit</option>
             <option value="On Leave">On Leave</option>
             <option value="Suspended">Suspended</option>
-            <option value="Transfer Pending">Transfer Pending</option>
           </select>
         </div>
 
-        {/* Overstay Badge Toggle */}
         <div className="col-span-2 sm:col-span-1 flex items-end">
           <button
             type="button"
