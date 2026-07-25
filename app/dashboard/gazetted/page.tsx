@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getOfficersByTier, getNodalOfficers } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { FilterState, OfficerWithCalculated } from '@/types/police'
@@ -16,31 +16,50 @@ export default function GazettedDashboardPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Fetch Gazetted Officers directly from Supabase Database
-  const loadGazettedData = async () => {
+  // Fetch Gazetted Officers directly from Supabase Database with strict timeout safety
+  const loadGazettedData = useCallback(async () => {
     setLoading(true)
     setErrorMessage(null)
 
+    // 8-second timeout promise to guarantee loading spinner ALWAYS terminates
+    const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
+      setTimeout(() => resolve({ timeout: true }), 8000)
+    )
+
     try {
-      // 1. Fetch Gazetted Tier Officers from Supabase
-      const { data: dbOfficers, error } = await getOfficersByTier('Gazetted')
+      // 1. Query Gazetted Officers from Supabase
+      const fetchPromise = getOfficersByTier('Gazetted')
+      const result = await Promise.race([fetchPromise, timeoutPromise])
+
+      if ('timeout' in result) {
+        console.warn('Supabase Query Timed Out [Gazetted Page]: Database query took longer than 8s')
+        setErrorMessage('Database connection timed out. Please check your Supabase URL & Key in .env.local')
+        setOfficers([])
+        return
+      }
+
+      const { data: dbOfficers, error } = result
       if (error) {
-        console.error('Supabase Error [Gazetted Page]:', error)
+        console.error('Supabase Error [Gazetted Page]:', error.message, error)
         setErrorMessage(error.message)
         setOfficers([])
-      } else if (dbOfficers) {
+      } else if (dbOfficers && Array.isArray(dbOfficers)) {
         const enriched = dbOfficers.map((o) => enrichOfficerData(o))
         setOfficers(enriched)
       } else {
         setOfficers([])
       }
 
-      // 2. Fetch Nodal Officers count from Supabase
-      const { data: nodalData, error: nodalError } = await getNodalOfficers()
-      if (nodalError) {
-        console.error('Supabase Error [Nodal Officers Fetch]:', nodalError)
-      } else if (nodalData) {
-        setActiveNodalCount(nodalData.length)
+      // 2. Query Nodal Officers count from Supabase
+      try {
+        const { data: nodalData, error: nodalError } = await getNodalOfficers()
+        if (nodalError) {
+          console.error('Supabase Error [Nodal Officers Fetch]:', nodalError.message, nodalError)
+        } else if (nodalData) {
+          setActiveNodalCount(nodalData.length)
+        }
+      } catch (nodalErr) {
+        console.error('Catch Error [Nodal Fetch]:', nodalErr)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -48,13 +67,14 @@ export default function GazettedDashboardPage() {
       setErrorMessage(msg)
       setOfficers([])
     } finally {
+      // GUARANTEED execution: Always stops loading spinner
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadGazettedData()
-  }, [])
+  }, [loadGazettedData])
 
   // Filter State
   const [filters, setFilters] = useState<FilterState>({
@@ -113,7 +133,7 @@ export default function GazettedDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header - Rebranded for Ayodhya Camp Office */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
@@ -140,7 +160,7 @@ export default function GazettedDashboardPage() {
         </div>
       </div>
 
-      {/* Loading & Empty States */}
+      {/* Loading & Error States */}
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -150,10 +170,16 @@ export default function GazettedDashboardPage() {
       ) : errorMessage ? (
         <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-3 shadow-sm">
           <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0" />
-          <div>
-            <p className="font-extrabold text-rose-950">Supabase Query Error</p>
-            <p className="text-xs text-rose-800 font-medium">{errorMessage}</p>
+          <div className="flex-1">
+            <p className="font-extrabold text-rose-950">Supabase Connection Notice</p>
+            <p className="text-xs text-rose-800 font-medium mt-0.5">{errorMessage}</p>
           </div>
+          <button
+            onClick={loadGazettedData}
+            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
+          >
+            Retry Fetch
+          </button>
         </div>
       ) : officers.length === 0 ? (
         <div className="py-16 text-center bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
