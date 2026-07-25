@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { getOfficersByTier, getPostingApplications, bulkDeleteOfficers } from '@/services/database'
+import { getOfficersByTier, bulkDeleteOfficers } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { FilterState, OfficerWithCalculated } from '@/types/police'
-import { DynamicMetrics } from '@/components/DynamicMetrics'
-import { ChartsSection } from '@/components/ChartsSection'
 import { Filters } from '@/components/Filters'
 import { OfficerTable } from '@/components/OfficerTable'
 import { AddOfficerModal } from '@/components/AddOfficerModal'
@@ -13,7 +11,6 @@ import { Loader2, RefreshCw, ShieldAlert, Users } from 'lucide-react'
 
 export default function NonGazettedDashboardPage() {
   const [officers, setOfficers] = useState<OfficerWithCalculated[]>([])
-  const [pendingApplicationsCount, setPendingApplicationsCount] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState<boolean>(false)
@@ -48,16 +45,6 @@ export default function NonGazettedDashboardPage() {
         setOfficers(enriched)
       } else {
         setOfficers([])
-      }
-
-      try {
-        const { data: appsData } = await getPostingApplications()
-        if (appsData) {
-          const pending = appsData.filter((a) => a.status === 'Pending').length
-          setPendingApplicationsCount(pending)
-        }
-      } catch (appsErr) {
-        console.error('Apps fetch notice:', appsErr)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -152,26 +139,24 @@ export default function NonGazettedDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Roster Management Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" /> Non-Gazetted Cadre Dashboard (NGOs)
+            <Users className="w-5 h-5 text-blue-600" /> Non-Gazetted Cadre Management View (NGOs)
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            Inspectors (SHO), Sub-Inspectors (SI), Outpost Incharges & Field Force • Camp Office, SSP Ayodhya
+            Inspectors (SHO), Sub-Inspectors (SI), Outpost Incharges & Field Force Roster • Camp Office, SSP Ayodhya
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={loadNonGazettedData}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors border border-slate-300 shadow-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            <span>Refresh Roster</span>
-          </button>
-        </div>
+        <button
+          onClick={loadNonGazettedData}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors border border-slate-300 shadow-sm"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+          <span>Refresh Roster</span>
+        </button>
       </div>
 
       {/* Loading & Error States */}
@@ -197,16 +182,6 @@ export default function NonGazettedDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Dynamic Metrics Cards */}
-          <DynamicMetrics
-            tier="Non-Gazetted"
-            officers={officers.filter((o) => o.status !== 'Transferred')}
-            pendingApplicationsCount={pendingApplicationsCount}
-          />
-
-          {/* Visualizations */}
-          <ChartsSection officers={officers.filter((o) => o.status !== 'Transferred')} tierName="Non-Gazetted Officers" />
-
           {/* Action Filters Bar */}
           <Filters
             filters={filters}

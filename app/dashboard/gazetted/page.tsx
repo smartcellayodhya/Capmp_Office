@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { getOfficersByTier, getNodalOfficers, bulkDeleteOfficers } from '@/services/database'
+import { getOfficersByTier, bulkDeleteOfficers } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { FilterState, OfficerWithCalculated } from '@/types/police'
-import { DynamicMetrics } from '@/components/DynamicMetrics'
-import { ChartsSection } from '@/components/ChartsSection'
 import { Filters } from '@/components/Filters'
 import { OfficerTable } from '@/components/OfficerTable'
 import { AddOfficerModal } from '@/components/AddOfficerModal'
@@ -13,7 +11,6 @@ import { Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
 
 export default function GazettedDashboardPage() {
   const [officers, setOfficers] = useState<OfficerWithCalculated[]>([])
-  const [activeNodalCount, setActiveNodalCount] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState<boolean>(false)
@@ -48,13 +45,6 @@ export default function GazettedDashboardPage() {
         setOfficers(enriched)
       } else {
         setOfficers([])
-      }
-
-      try {
-        const { data: nodalData } = await getNodalOfficers()
-        if (nodalData) setActiveNodalCount(nodalData.length)
-      } catch (nodalErr) {
-        console.error('Nodal fetch notice:', nodalErr)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -149,26 +139,24 @@ export default function GazettedDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Roster Management Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-amber-600" /> Gazetted Officers Cadre (GOs)
+            <ShieldCheck className="w-5 h-5 text-amber-600" /> Gazetted Officers Management View (GOs)
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            IPS & PPS Cadre Leadership Management • Camp Office, SSP Ayodhya
+            IPS & PPS Cadre Roster Management • Camp Office, SSP Ayodhya
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={loadGazettedData}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors border border-slate-300 shadow-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            <span>Refresh Roster</span>
-          </button>
-        </div>
+        <button
+          onClick={loadGazettedData}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors border border-slate-300 shadow-sm"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+          <span>Refresh Roster</span>
+        </button>
       </div>
 
       {/* Loading & Error States */}
@@ -194,16 +182,6 @@ export default function GazettedDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Dynamic Metrics Cards */}
-          <DynamicMetrics
-            tier="Gazetted"
-            officers={officers.filter((o) => o.status !== 'Transferred')}
-            activeNodalCount={activeNodalCount}
-          />
-
-          {/* Visualizations */}
-          <ChartsSection officers={officers.filter((o) => o.status !== 'Transferred')} tierName="Gazetted Officers" />
-
           {/* Action Filters Bar */}
           <Filters
             filters={filters}
