@@ -8,9 +8,7 @@ import { OfficerWithCalculated, FilterState } from '@/types/police'
 import { CommandCenter } from '@/components/CommandCenter'
 import { NaturalLanguageQuery } from '@/components/NaturalLanguageQuery'
 import { AIInsightsPanel } from '@/components/AIInsightsPanel'
-import { StickyFilterToolbar } from '@/components/StickyFilterToolbar'
 import { ChartsSection } from '@/components/ChartsSection'
-import { OfficerTable } from '@/components/OfficerTable'
 import { FloatingAIAssistant } from '@/components/FloatingAIAssistant'
 import { AddOfficerModal } from '@/components/AddOfficerModal'
 import { TimelineModal } from '@/components/TimelineModal'
@@ -23,8 +21,7 @@ import {
   ChevronRight,
   Briefcase,
   UserX,
-  MapPin,
-  Award
+  MapPin
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -38,17 +35,6 @@ export default function LiveDashboardPage() {
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedOfficerForTimeline, setSelectedOfficerForTimeline] = useState<OfficerWithCalculated | null>(null)
-
-  // Filter Toolbar State
-  const [filters, setFilters] = useState<FilterState>({
-    searchQuery: '',
-    rank: 'ALL',
-    caste: 'ALL',
-    role: 'ALL',
-    status: 'ALL',
-    overstayOnly: false,
-    retiringSoonOnly: false
-  })
 
   const [activeAlertKey, setActiveAlertKey] = useState<string>('ALL')
 
@@ -95,58 +81,10 @@ export default function LiveDashboardPage() {
     loadData()
   }, [loadData])
 
-  const handleFilterChange = (key: keyof FilterState, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const handleResetFilters = () => {
-    setFilters({
-      searchQuery: '',
-      rank: 'ALL',
-      caste: 'ALL',
-      role: 'ALL',
-      status: 'ALL',
-      overstayOnly: false,
-      retiringSoonOnly: false
-    })
-    setActiveAlertKey('ALL')
-  }
-
-  const handleAlertFilterSelect = (filterKey: string) => {
-    setActiveAlertKey(filterKey)
-    if (filterKey === 'SUSPENDED') handleFilterChange('status', 'Suspended')
-    else if (filterKey === 'OVERSTAY') handleFilterChange('overstayOnly', true)
-    else if (filterKey === 'RETIRING_SOON') handleFilterChange('retiringSoonOnly', true)
-    else handleResetFilters()
-  }
-
   // Active force list
   const activeForce = useMemo(() => {
     return allOfficers.filter((o) => o.status !== 'Transferred')
   }, [allOfficers])
-
-  // Filtered officers list
-  const filteredOfficers = useMemo(() => {
-    return allOfficers.filter((o) => {
-      if (filters.searchQuery) {
-        const q = filters.searchQuery.toLowerCase()
-        const combined = `${o.name} ${o.pno} ${o.rank} ${o.coreRank} ${o.current_posting} ${o.specialDuty}`.toLowerCase()
-        if (!combined.includes(q)) return false
-      }
-
-      if (filters.rank !== 'ALL' && o.coreRank !== filters.rank) return false
-      if (filters.caste !== 'ALL' && o.caste_category !== filters.caste) return false
-      if (filters.role !== 'ALL') {
-        const d = (o.smartDutyDisplay || o.specialDuty || '').toLowerCase()
-        if (!d.includes(filters.role.toLowerCase())) return false
-      }
-      if (filters.status !== 'ALL' && o.status !== filters.status) return false
-      if (filters.overstayOnly && !o.isOverstay) return false
-      if (filters.retiringSoonOnly && (!o.isRetiringSoon && o.retirementMonthsRemaining > 12)) return false
-
-      return true
-    })
-  }, [allOfficers, filters])
 
   // Executive KPI Counts
   const kpis = useMemo(() => {
@@ -168,12 +106,10 @@ export default function LiveDashboardPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* NO HEADER COMPONENT HERE - Header is persisted at Layout level (app/layout.tsx) */}
-
       {loading && allOfficers.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <p className="text-sm font-bold text-slate-900">Loading Command Dashboard...</p>
+          <p className="text-sm font-bold text-slate-900">Loading Command Dashboard Overview...</p>
         </div>
       ) : errorMessage && allOfficers.length === 0 ? (
         <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-3 shadow-sm">
@@ -211,7 +147,7 @@ export default function LiveDashboardPage() {
               </div>
               <h3 className="text-3xl font-black">{kpis.gos}</h3>
               <p className="text-[11px] opacity-90 font-bold flex items-center justify-between">
-                <span>IPS / PPS Leaders</span>
+                <span>IPS / PPS Roster</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </p>
             </Link>
@@ -256,11 +192,11 @@ export default function LiveDashboardPage() {
                 <UserX className="w-4 h-4" />
               </div>
               <h3 className="text-3xl font-black">{kpis.suspended}</h3>
-              <p className="text-[11px] opacity-90 font-bold">Disciplinary Action</p>
+              <p className="text-[11px] opacity-90 font-bold">Disciplinary Roster</p>
             </div>
           </div>
 
-          {/* ROW 2: THE TWO CHARTS */}
+          {/* ROW 2: THE TWO CHARTS (Bar Chart on left 2-cols, Donut Chart on right 1-col) */}
           <ChartsSection officers={activeForce} tierName="Entire District Force" />
 
           {/* ROW 3: AI SEARCH BAR + OPERATIONAL ALERTS & AI INSIGHTS */}
@@ -275,42 +211,14 @@ export default function LiveDashboardPage() {
             <CommandCenter
               officers={allOfficers}
               pendingAppsCount={pendingAppsCount}
-              onSelectFilter={handleAlertFilterSelect}
+              onSelectFilter={(key) => setActiveAlertKey(key)}
               activeFilter={activeAlertKey}
             />
 
             <AIInsightsPanel
               officers={activeForce}
-              onExecuteAction={(actionKey) => {
-                if (actionKey === 'FILTER_OVERSTAY') handleFilterChange('overstayOnly', true)
-                else if (actionKey === 'FILTER_SUSPENDED') handleFilterChange('status', 'Suspended')
-                else if (actionKey === 'FILTER_RETIRING') handleFilterChange('retiringSoonOnly', true)
-              }}
+              onExecuteAction={() => {}}
             />
-          </div>
-
-          {/* ROW 4: STICKY FILTER TOOLBAR & PERSONNEL DATA TABLE */}
-          <div className="space-y-4">
-            <StickyFilterToolbar
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onResetFilters={handleResetFilters}
-              activeCount={filteredOfficers.length}
-              totalCount={allOfficers.length}
-            />
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-blue-600" />
-                  <span>District Personnel Records Roster ({filteredOfficers.length} Records)</span>
-                </h3>
-              </div>
-              <OfficerTable
-                officers={filteredOfficers}
-                onRefresh={() => loadData(true)}
-              />
-            </div>
           </div>
 
           {/* FLOATING AI ASSISTANT COPILOT */}
