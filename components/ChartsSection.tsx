@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { OfficerWithCalculated } from '@/types/police'
 import {
   BarChart,
@@ -86,10 +86,10 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* LEFT: Core Rank Strength Distribution (2 Columns) */}
-      <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      {/* LEFT: Core Rank Strength Distribution (2 Columns, Fixed Height h-[380px]) */}
+      <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[380px]">
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/60">
               <BarChart3 className="w-4 h-4" />
@@ -110,11 +110,16 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
           </button>
         </div>
 
-        <div className="h-64 w-full">
+        <div className="flex-1 w-full min-h-0 pt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rankData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
+            <BarChart data={rankData} margin={{ top: 10, right: 10, left: -20, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-              <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} 
+                tickLine={false}
+                interval={0}
+              />
               <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
               <Tooltip
                 contentStyle={{
@@ -131,9 +136,9 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
         </div>
       </div>
 
-      {/* RIGHT: Clean 5-Category Donut Chart (1 Column) */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-        <div className="flex items-center gap-2.5 mb-2 pb-3 border-b border-slate-100">
+      {/* RIGHT: Clean Donut Chart (1 Column, Fixed Height h-[380px], Clean Recharts Legend) */}
+      <div className="lg:col-span-1 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[380px]">
+        <div className="flex items-center gap-2.5 mb-2 pb-2 border-b border-slate-100 shrink-0">
           <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">
             <PieIcon className="w-4 h-4" />
           </div>
@@ -143,15 +148,15 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
           </div>
         </div>
 
-        <div className="h-56 w-full relative">
+        <div className="flex-1 w-full min-h-0 relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={casteData}
                 cx="50%"
                 cy="45%"
-                innerRadius={45}
-                outerRadius={70}
+                innerRadius={50}
+                outerRadius={80}
                 paddingAngle={4}
                 dataKey="value"
               >
@@ -170,23 +175,13 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
               />
               <Legend
                 verticalAlign="bottom"
-                height={36}
+                height={40}
                 formatter={(value: string) => (
-                  <span className="text-slate-700 text-xs font-semibold ml-1">{value}</span>
+                  <span className="text-slate-700 text-xs font-bold ml-1">{value}</span>
                 )}
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* Dynamic Category Badges */}
-        <div className="mt-2 pt-3 border-t border-slate-100 grid grid-cols-3 gap-1.5 text-center text-xs">
-          {casteData.map((c) => (
-            <div key={c.name} className="px-1.5 py-1 rounded-lg bg-slate-50 border border-slate-200/60">
-              <span className="text-slate-500 font-medium block text-[10px]">{c.name}</span>
-              <strong className="text-slate-900 font-bold">{c.value}</strong>
-            </div>
-          ))}
         </div>
       </div>
     </div>

@@ -8,7 +8,6 @@ import {
   FileSpreadsheet, 
   Printer, 
   RefreshCw, 
-  FileText,
   Loader2
 } from 'lucide-react'
 
@@ -40,12 +39,12 @@ export function QuickActionToolbar({
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {/* 1. Add Personnel Button (Primary) */}
+    <div className="flex flex-row items-center gap-2 shrink-0">
+      {/* 1. Add Personnel Button */}
       <button
         type="button"
         onClick={onOpenAddModal}
-        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors whitespace-nowrap"
         title="Add New Police Officer Record"
       >
         <UserPlus className="w-3.5 h-3.5" />
@@ -57,42 +56,31 @@ export function QuickActionToolbar({
         type="button"
         onClick={handleExportExcel}
         disabled={exporting}
-        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-colors disabled:opacity-60"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-colors whitespace-nowrap disabled:opacity-60"
         title="Export Roster to Excel"
       >
         {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" /> : <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />}
         <span>Export Excel</span>
       </button>
 
-      {/* 3. Generate Report Button (Subtle Outline) */}
-      <button
-        type="button"
-        onClick={handleExportExcel}
-        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-colors"
-        title="Generate Executive Report"
-      >
-        <FileText className="w-3.5 h-3.5 text-purple-600" />
-        <span>Generate Report</span>
-      </button>
-
-      {/* 4. Print Button */}
+      {/* 3. Print Button */}
       <button
         type="button"
         onClick={handlePrint}
         className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs transition-colors"
-        title="Print View"
+        title="Print Dashboard"
       >
-        <Printer className="w-4 h-4 text-slate-600" />
+        <Printer className="w-3.5 h-3.5 text-slate-600" />
       </button>
 
-      {/* 5. Refresh Button */}
+      {/* 4. Refresh Button */}
       <button
         type="button"
         onClick={onRefresh}
         className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs transition-colors"
-        title="Refresh Roster"
+        title="Refresh Data"
       >
-        <RefreshCw className="w-4 h-4 text-blue-600" />
+        <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
       </button>
     </div>
   )
