@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -11,11 +11,13 @@ import {
   FileText,
   Award,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  LogOut
 } from 'lucide-react'
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
 
   const navItems = [
@@ -57,6 +59,10 @@ export function Sidebar() {
     },
   ]
 
+  const handleSignOut = () => {
+    router.push('/login')
+  }
+
   return (
     <aside
       className={`bg-white border-r border-slate-200 min-h-screen flex flex-col justify-between shrink-0 shadow-xs transition-all duration-300 z-30 sticky top-0 ${
@@ -64,7 +70,7 @@ export function Sidebar() {
       }`}
     >
       <div>
-        {/* Clean Perfectly Filled Circle UP Police Logo */}
+        {/* Circle UP Police Logo & Collapse Toggle */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden p-0.5 shadow-2xs">
@@ -138,6 +144,19 @@ export function Sidebar() {
             )
           })}
         </div>
+      </div>
+
+      {/* Sidebar Footer Sign Out Button */}
+      <div className="p-3 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
+          title="Sign Out"
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span>Sign Out</span>}
+        </button>
       </div>
     </aside>
   )
