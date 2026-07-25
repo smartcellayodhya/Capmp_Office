@@ -1,10 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Ayodhya Police | Camp Office Portal',
@@ -18,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-slate-50 text-slate-900 flex min-h-screen antialiased`}>
+      <body className="bg-slate-50 text-slate-900 flex min-h-screen antialiased font-sans selection:bg-blue-600 selection:text-white">
         {/* Sidebar Navigation */}
         <Sidebar />
 
