@@ -19,20 +19,27 @@ export default function TransfersPage() {
       try {
         const { data: apps, error } = await getPostingApplications()
         if (error) {
-          console.error('Supabase Error [Transfers Page]:', error)
+          console.error('Supabase Query Error [Transfers Applications]:', error.message, error)
           setErrorMessage(error.message)
         } else if (apps) {
           setApplications(apps)
 
-          // Fetch associated officer details from Supabase
+          // Fetch associated officer records matching officer_pno (snake_case column: pno)
           const pnos = Array.from(new Set(apps.map((a) => a.officer_pno)))
           if (pnos.length > 0) {
-            const { data: officersData } = await supabase
+            const { data: officersData, error: officerError } = await supabase
               .from('officers')
               .select('*')
               .in('pno', pnos)
 
-            if (officersData) {
+            if (officerError) {
+              console.error(
+                'Supabase Query Error [Transfers Officers]:',
+                officerError.message,
+                officerError.hint,
+                officerError.details
+              )
+            } else if (officersData) {
               const map: Record<string, OfficerRow> = {}
               ;(officersData as OfficerRow[]).forEach((o) => {
                 map[o.pno] = o

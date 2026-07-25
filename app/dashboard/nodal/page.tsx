@@ -19,20 +19,27 @@ export default function NodalOfficersPage() {
       try {
         const { data: nodals, error } = await getNodalOfficers()
         if (error) {
-          console.error('Supabase Error [Nodal Officers Page]:', error)
+          console.error('Supabase Query Error [Nodal Officers]:', error.message, error)
           setErrorMessage(error.message)
         } else if (nodals) {
           setNodalList(nodals)
 
-          // Fetch associated officer details from Supabase
+          // Fetch associated officer records matching officer_pno (snake_case column: pno)
           const pnos = Array.from(new Set(nodals.map((n) => n.officer_pno)))
           if (pnos.length > 0) {
-            const { data: officersData } = await supabase
+            const { data: officersData, error: officerError } = await supabase
               .from('officers')
               .select('*')
               .in('pno', pnos)
 
-            if (officersData) {
+            if (officerError) {
+              console.error(
+                'Supabase Query Error [Nodal Officers Joined]:',
+                officerError.message,
+                officerError.hint,
+                officerError.details
+              )
+            } else if (officersData) {
               const map: Record<string, OfficerRow> = {}
               ;(officersData as OfficerRow[]).forEach((o) => {
                 map[o.pno] = o

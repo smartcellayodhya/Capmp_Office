@@ -9,8 +9,23 @@ import {
 } from '@/types/supabase'
 
 /**
+ * Helper to log detailed Supabase errors
+ */
+function logSupabaseError(context: string, error: any) {
+  if (!error) return
+  console.error(`Supabase Query Error [${context}]:`, {
+    message: error.message || 'No message',
+    hint: error.hint || 'No hint',
+    details: error.details || 'No details',
+    code: error.code || 'No code',
+    raw: error
+  })
+}
+
+/**
  * 1. getOfficersByTier
- * Fetches officers list filtered by officer_tier ('Gazetted' | 'Non-Gazetted').
+ * Queries table: 'officers'
+ * Column match: 'officer_tier' (snake_case)
  */
 export async function getOfficersByTier(tier: OfficerTier): Promise<{
   data: Officer[] | null
@@ -24,21 +39,22 @@ export async function getOfficersByTier(tier: OfficerTier): Promise<{
       .order('rank', { ascending: true })
 
     if (error) {
-      console.error('Supabase Error [getOfficersByTier]:', error)
+      logSupabaseError('getOfficersByTier', error)
       return { data: null, error: new Error(error.message) }
     }
 
     return { data: (data || []) as Officer[], error: null }
   } catch (err: unknown) {
     const errorObj = err instanceof Error ? err : new Error(String(err))
-    console.error('Unexpected Catch Error [getOfficersByTier]:', errorObj)
+    console.error('Unexpected Exception [getOfficersByTier]:', errorObj)
     return { data: null, error: errorObj }
   }
 }
 
 /**
  * 2. getOfficerProfileWithHistory
- * Fetches a single officer's profile joined with their posting_history by PNO.
+ * Queries tables: 'officers' and 'posting_history' (snake_case columns: pno, officer_pno)
+ * Uses clean separate queries to guarantee compatibility even if PostgREST relational cache is disabled.
  */
 export async function getOfficerProfileWithHistory(
   pno: string
@@ -47,46 +63,49 @@ export async function getOfficerProfileWithHistory(
   error: Error | null
 }> {
   try {
-    const { data, error } = await supabase
+    // Query 1: Fetch Officer details
+    const { data: officer, error: officerError } = await supabase
       .from('officers')
-      .select(`
-        *,
-        posting_history (
-          id,
-          officer_pno,
-          station_name,
-          posting_date,
-          duration_months,
-          created_at
-        )
-      `)
+      .select('*')
       .eq('pno', pno)
       .maybeSingle()
 
-    if (error) {
-      console.error(`Supabase Error [getOfficerProfileWithHistory for PNO ${pno}]:`, error)
-      return { data: null, error: new Error(error.message) }
+    if (officerError) {
+      logSupabaseError(`getOfficerProfileWithHistory (officer PNO: ${pno})`, officerError)
+      return { data: null, error: new Error(officerError.message) }
     }
 
-    const profile = data as unknown as OfficerProfileWithHistory
-    if (profile && Array.isArray(profile.posting_history)) {
-      profile.posting_history.sort(
-        (a: PostingHistory, b: PostingHistory) =>
-          new Date(b.posting_date || 0).getTime() - new Date(a.posting_date || 0).getTime()
-      )
+    if (!officer) {
+      return { data: null, error: null }
     }
 
-    return { data: profile, error: null }
+    // Query 2: Fetch posting history matching officer_pno
+    const { data: history, error: historyError } = await supabase
+      .from('posting_history')
+      .select('*')
+      .eq('officer_pno', pno)
+      .order('posting_date', { ascending: false })
+
+    if (historyError) {
+      logSupabaseError(`getOfficerProfileWithHistory (posting_history PNO: ${pno})`, historyError)
+    }
+
+    const fullProfile: OfficerProfileWithHistory = {
+      ...(officer as Officer),
+      posting_history: (history || []) as PostingHistory[]
+    }
+
+    return { data: fullProfile, error: null }
   } catch (err: unknown) {
     const errorObj = err instanceof Error ? err : new Error(String(err))
-    console.error(`Unexpected Catch Error [getOfficerProfileWithHistory]:`, errorObj)
+    console.error(`Unexpected Exception [getOfficerProfileWithHistory]:`, errorObj)
     return { data: null, error: errorObj }
   }
 }
 
 /**
  * 3. getOverstayingOfficers
- * Fetches officers whose tenure in current_posting exceeds monthsThreshold (default: 36).
+ * Queries table: 'officers' (snake_case column: status = 'Active', joining_date)
  */
 export async function getOverstayingOfficers(
   monthsThreshold = 36
@@ -98,9 +117,10 @@ export async function getOverstayingOfficers(
     const { data: rawOfficers, error } = await supabase
       .from('officers')
       .select('*')
+      .eq('status', 'Active')
 
     if (error) {
-      console.error('Supabase Error [getOverstayingOfficers]:', error)
+      logSupabaseError('getOverstayingOfficers', error)
       return { data: null, error: new Error(error.message) }
     }
 
@@ -122,14 +142,14 @@ export async function getOverstayingOfficers(
     return { data: overstaying, error: null }
   } catch (err: unknown) {
     const errorObj = err instanceof Error ? err : new Error(String(err))
-    console.error('Unexpected Catch Error [getOverstayingOfficers]:', errorObj)
+    console.error('Unexpected Exception [getOverstayingOfficers]:', errorObj)
     return { data: null, error: errorObj }
   }
 }
 
 /**
  * 4. getUpcomingRetirements
- * Fetches officers retiring within monthsLimit (default: 6 months) based on dob.
+ * Queries table: 'officers' (snake_case column: dob)
  */
 export async function getUpcomingRetirements(
   monthsLimit = 6
@@ -143,7 +163,7 @@ export async function getUpcomingRetirements(
       .select('*')
 
     if (error) {
-      console.error('Supabase Error [getUpcomingRetirements]:', error)
+      logSupabaseError('getUpcomingRetirements', error)
       return { data: null, error: new Error(error.message) }
     }
 
@@ -179,14 +199,14 @@ export async function getUpcomingRetirements(
     return { data: retiringSoon, error: null }
   } catch (err: unknown) {
     const errorObj = err instanceof Error ? err : new Error(String(err))
-    console.error('Unexpected Catch Error [getUpcomingRetirements]:', errorObj)
+    console.error('Unexpected Exception [getUpcomingRetirements]:', errorObj)
     return { data: null, error: errorObj }
   }
 }
 
 /**
  * 5. getPostingApplications
- * Fetches all transfer posting applications.
+ * Queries table: 'posting_applications'
  */
 export async function getPostingApplications(): Promise<{
   data: PostingApplication[] | null
@@ -199,21 +219,21 @@ export async function getPostingApplications(): Promise<{
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Supabase Error [getPostingApplications]:', error)
+      logSupabaseError('getPostingApplications', error)
       return { data: null, error: new Error(error.message) }
     }
 
     return { data: (data || []) as PostingApplication[], error: null }
   } catch (err: unknown) {
     const errorObj = err instanceof Error ? err : new Error(String(err))
-    console.error('Unexpected Catch Error [getPostingApplications]:', errorObj)
+    console.error('Unexpected Exception [getPostingApplications]:', errorObj)
     return { data: null, error: errorObj }
   }
 }
 
 /**
  * 6. getNodalOfficers
- * Fetches all nodal officer assignments.
+ * Queries table: 'nodal_officers'
  */
 export async function getNodalOfficers(): Promise<{
   data: NodalOfficer[] | null
@@ -225,14 +245,14 @@ export async function getNodalOfficers(): Promise<{
       .select('*')
 
     if (error) {
-      console.error('Supabase Error [getNodalOfficers]:', error)
+      logSupabaseError('getNodalOfficers', error)
       return { data: null, error: new Error(error.message) }
     }
 
     return { data: (data || []) as NodalOfficer[], error: null }
   } catch (err: unknown) {
     const errorObj = err instanceof Error ? err : new Error(String(err))
-    console.error('Unexpected Catch Error [getNodalOfficers]:', errorObj)
+    console.error('Unexpected Exception [getNodalOfficers]:', errorObj)
     return { data: null, error: errorObj }
   }
 }
