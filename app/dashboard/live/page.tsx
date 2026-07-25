@@ -1,11 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { getAllOfficers } from '@/services/database'
+import { getAllOfficers, getPostingApplications } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { getCachedOfficers, setCachedOfficers } from '@/lib/cache'
-import { OfficerWithCalculated } from '@/types/police'
+import { OfficerWithCalculated, FilterState } from '@/types/police'
+import { Header } from '@/components/Header'
+import { CommandCenter } from '@/components/CommandCenter'
+import { NaturalLanguageQuery } from '@/components/NaturalLanguageQuery'
+import { AIInsightsPanel } from '@/components/AIInsightsPanel'
+import { StickyFilterToolbar } from '@/components/StickyFilterToolbar'
 import { ChartsSection } from '@/components/ChartsSection'
+import { ActivityTimeline } from '@/components/ActivityTimeline'
+import { OfficerTable } from '@/components/OfficerTable'
+import { FloatingAIAssistant } from '@/components/FloatingAIAssistant'
+import { AddOfficerModal } from '@/components/AddOfficerModal'
+import { TimelineModal } from '@/components/TimelineModal'
 import { 
   ShieldCheck, 
   Users, 
@@ -17,7 +27,8 @@ import {
   Clock,
   Briefcase,
   UserX,
-  MapPin
+  MapPin,
+  Award
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,7 +36,26 @@ export default function LiveDashboardPage() {
   const [allOfficers, setAllOfficers] = useState<OfficerWithCalculated[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [refreshing, setRefreshing] = useState<boolean>(false)
+  const [pendingAppsCount, setPendingAppsCount] = useState<number>(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [selectedOfficerForTimeline, setSelectedOfficerForTimeline] = useState<OfficerWithCalculated | null>(null)
+
+  // Filter Toolbar State
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: '',
+    rank: 'ALL',
+    caste: 'ALL',
+    role: 'ALL',
+    status: 'ALL',
+    overstayOnly: false,
+    retiringSoonOnly: false
+  })
+
+  // Command Center Alert Filter State Key
+  const [activeAlertKey, setActiveAlertKey] = useState<string>('ALL')
 
   // Fast fetch using 0ms Instant Cache + SWR
   const loadData = useCallback(async (isManualRefresh = false) => {
@@ -40,14 +70,22 @@ export default function LiveDashboardPage() {
 
     // Step 2: Background sync from Supabase
     try {
-      const { data, error } = await getAllOfficers()
-      if (error) {
-        if (!cached || cached.length === 0) setErrorMessage(error.message)
-      } else if (data) {
-        const enriched = data.map((o) => enrichOfficerData(o))
+      const [officersRes, appsRes] = await Promise.all([
+        getAllOfficers(),
+        getPostingApplications()
+      ])
+
+      if (officersRes.error) {
+        if (!cached || cached.length === 0) setErrorMessage(officersRes.error.message)
+      } else if (officersRes.data) {
+        const enriched = officersRes.data.map((o) => enrichOfficerData(o))
         setAllOfficers(enriched)
         setCachedOfficers(enriched)
         setErrorMessage(null)
+      }
+
+      if (appsRes.data) {
+        setPendingAppsCount(appsRes.data.filter((a) => a.status === 'Pending').length)
       }
     } catch (err: any) {
       console.error('Background sync notice:', err)
@@ -62,196 +100,242 @@ export default function LiveDashboardPage() {
     loadData()
   }, [loadData])
 
+  const handleFilterChange = (key: keyof FilterState, value: any) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleResetFilters = () => {
+    setFilters({
+      searchQuery: '',
+      rank: 'ALL',
+      caste: 'ALL',
+      role: 'ALL',
+      status: 'ALL',
+      overstayOnly: false,
+      retiringSoonOnly: false
+    })
+    setActiveAlertKey('ALL')
+  }
+
+  // Handle Command Center Alert Card Click
+  const handleAlertFilterSelect = (filterKey: string) => {
+    setActiveAlertKey(filterKey)
+    if (filterKey === 'SUSPENDED') handleFilterChange('status', 'Suspended')
+    else if (filterKey === 'OVERSTAY') handleFilterChange('overstayOnly', true)
+    else if (filterKey === 'RETIRING_SOON') handleFilterChange('retiringSoonOnly', true)
+    else handleResetFilters()
+  }
+
   // Active force list (excluding status === 'Transferred')
   const activeForce = useMemo(() => {
     return allOfficers.filter((o) => o.status !== 'Transferred')
   }, [allOfficers])
 
-  // High-Level Administrative Metrics
-  const metrics = useMemo(() => {
-    const totalForce = activeForce.length
+  // Filtered officers list based on StickyFilterToolbar + Command Center
+  const filteredOfficers = useMemo(() => {
+    return allOfficers.filter((o) => {
+      // Search query
+      if (filters.searchQuery) {
+        const q = filters.searchQuery.toLowerCase()
+        const combined = `${o.name} ${o.pno} ${o.rank} ${o.coreRank} ${o.current_posting} ${o.specialDuty}`.toLowerCase()
+        if (!combined.includes(q)) return false
+      }
 
-    // Gazetted Officers (GOs)
-    const gosCount = activeForce.filter((o) => o.officer_tier === 'Gazetted' && o.status !== 'Suspended').length
+      // Core Rank
+      if (filters.rank !== 'ALL' && o.coreRank !== filters.rank) return false
 
-    // Non-Gazetted (NGOs)
-    const ngosCount = activeForce.filter((o) => o.officer_tier === 'Non-Gazetted' && o.status !== 'Suspended').length
+      // Caste Category
+      if (filters.caste !== 'ALL' && o.caste_category !== filters.caste) return false
 
-    // Thana Prabhari (SHO / SO)
-    const thanaPrabhariCount = activeForce.filter((o) => {
+      // Special Duty Role
+      if (filters.role !== 'ALL') {
+        const d = (o.smartDutyDisplay || o.specialDuty || '').toLowerCase()
+        if (!d.includes(filters.role.toLowerCase())) return false
+      }
+
+      // Status
+      if (filters.status !== 'ALL' && o.status !== filters.status) return false
+
+      // Overstay Flag
+      if (filters.overstayOnly && !o.isOverstay) return false
+
+      // Retiring Soon Flag
+      if (filters.retiringSoonOnly && (!o.isRetiringSoon && o.retirementMonthsRemaining > 12)) return false
+
+      return true
+    })
+  }, [allOfficers, filters])
+
+  // Executive KPI Counts
+  const kpis = useMemo(() => {
+    const total = activeForce.length
+    const gos = activeForce.filter((o) => o.officer_tier === 'Gazetted' && o.status !== 'Suspended').length
+    const ngos = activeForce.filter((o) => o.officer_tier === 'Non-Gazetted' && o.status !== 'Suspended').length
+    const thanaPrabhari = activeForce.filter((o) => {
       const d = (o.smartDutyDisplay || o.specialDuty || '').toLowerCase()
       return (d.includes('sho') || d.includes('so') || d.includes('thana prabhari')) && o.status !== 'Suspended'
     }).length
-
-    // Chowki Incharges
-    const chowkiInchargeCount = activeForce.filter((o) => {
+    const chowkiIncharge = activeForce.filter((o) => {
       const d = (o.smartDutyDisplay || o.specialDuty || '').toLowerCase()
       return d.includes('chowki incharge') && o.status !== 'Suspended'
     }).length
+    const suspended = allOfficers.filter((o) => o.status === 'Suspended').length
 
-    // Suspended Personnel
-    const suspendedCount = allOfficers.filter((o) => o.status === 'Suspended').length
-
-    // Overstay & Retirement
-    const overstayCount = activeForce.filter((o) => o.isOverstay && o.status !== 'Suspended').length
-    const retiringSoonCount = activeForce.filter((o) => o.isRetiringSoon).length
-
-    return {
-      totalForce,
-      gosCount,
-      ngosCount,
-      thanaPrabhariCount,
-      chowkiInchargeCount,
-      suspendedCount,
-      overstayCount,
-      retiringSoonCount
-    }
+    return { total, gos, ngos, thanaPrabhari, chowkiIncharge, suspended }
   }, [allOfficers, activeForce])
 
   return (
-    <div className="space-y-6">
-      {/* Executive Command Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-            📊 Executive Analytics Command Dashboard
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">
-            District Force Analytics, Cadre Breakdown & Field Leadership • Camp Office, SSP Ayodhya
-          </p>
+    <div className="space-y-6 pb-20">
+      {/* 1. Header with Global Search & Quick Actions */}
+      <Header
+        activeTierName="Ayodhya Police Command & Control Center"
+        officers={allOfficers}
+        onOpenAddModal={() => setIsAddModalOpen(true)}
+        onRefresh={() => loadData(true)}
+        onSelectOfficer={(o) => setSelectedOfficerForTimeline(o)}
+      />
+
+      {/* 2. Today's Command Center (Operational Alert Center) */}
+      <CommandCenter
+        officers={allOfficers}
+        pendingAppsCount={pendingAppsCount}
+        onSelectFilter={handleAlertFilterSelect}
+        activeFilter={activeAlertKey}
+      />
+
+      {/* 3. Executive KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+        {/* Total Force */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-2xl text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Force</span>
+            <Briefcase className="w-5 h-5 text-slate-300" />
+          </div>
+          <h3 className="text-3xl font-black">{kpis.total}</h3>
+          <p className="text-[11px] text-slate-300 font-bold mt-1">Entire Active Roster</p>
         </div>
-        <button
-          onClick={() => loadData(true)}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors border border-slate-300 shadow-sm self-start sm:self-center"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
-          <span>{refreshing ? 'Syncing...' : 'Refresh Roster'}</span>
-        </button>
+
+        {/* Gazetted Officers */}
+        <Link href="/dashboard/gazetted" className="bg-gradient-to-br from-amber-500 to-amber-700 p-5 rounded-2xl text-white shadow-md hover:shadow-lg transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Gazetted GOs</span>
+            <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </div>
+          <h3 className="text-3xl font-black">{kpis.gos}</h3>
+          <p className="text-[11px] opacity-90 font-bold mt-1 flex items-center justify-between">
+            <span>IPS / PPS Leaders</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </p>
+        </Link>
+
+        {/* Non-Gazetted */}
+        <Link href="/dashboard/non-gazetted" className="bg-gradient-to-br from-blue-600 to-indigo-800 p-5 rounded-2xl text-white shadow-md hover:shadow-lg transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Non-Gazetted</span>
+            <Users className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </div>
+          <h3 className="text-3xl font-black">{kpis.ngos}</h3>
+          <p className="text-[11px] opacity-90 font-bold mt-1 flex items-center justify-between">
+            <span>Inspectors & Field Force</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </p>
+        </Link>
+
+        {/* Thana Prabhari */}
+        <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-5 rounded-2xl text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Thana Prabhari</span>
+            <Building2 className="w-5 h-5" />
+          </div>
+          <h3 className="text-3xl font-black">{kpis.thanaPrabhari}</h3>
+          <p className="text-[11px] opacity-90 font-bold mt-1">SHO / SO Station Chiefs</p>
+        </div>
+
+        {/* Chowki Incharges */}
+        <div className="bg-gradient-to-br from-purple-600 to-indigo-900 p-5 rounded-2xl text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Chowki Incharges</span>
+            <MapPin className="w-5 h-5" />
+          </div>
+          <h3 className="text-3xl font-black">{kpis.chowkiIncharge}</h3>
+          <p className="text-[11px] opacity-90 font-bold mt-1">Outpost Commanders</p>
+        </div>
+
+        {/* Suspended */}
+        <div className="bg-gradient-to-br from-rose-600 to-red-900 p-5 rounded-2xl text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Suspended</span>
+            <UserX className="w-5 h-5" />
+          </div>
+          <h3 className="text-3xl font-black">{kpis.suspended}</h3>
+          <p className="text-[11px] opacity-90 font-bold mt-1">Disciplinary Roster</p>
+        </div>
       </div>
 
-      {loading && allOfficers.length === 0 ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <p className="text-sm font-bold text-slate-900">Loading Personnel Analytics...</p>
+      {/* 4. Natural Language AI Query Box (Requirement 12) */}
+      <NaturalLanguageQuery
+        officers={allOfficers}
+        onSelectFilterResult={(results) => {
+          setAllOfficers(results)
+        }}
+      />
+
+      {/* 5. AI Insights Panel (Requirement 6) */}
+      <AIInsightsPanel
+        officers={activeForce}
+        onExecuteAction={(actionKey) => {
+          if (actionKey === 'FILTER_OVERSTAY') handleFilterChange('overstayOnly', true)
+          else if (actionKey === 'FILTER_SUSPENDED') handleFilterChange('status', 'Suspended')
+          else if (actionKey === 'FILTER_RETIRING') handleFilterChange('retiringSoonOnly', true)
+        }}
+      />
+
+      {/* 6. Sticky Multi-Filter Toolbar (Requirement 4) */}
+      <StickyFilterToolbar
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onResetFilters={handleResetFilters}
+        activeCount={filteredOfficers.length}
+        totalCount={allOfficers.length}
+      />
+
+      {/* 7. Advanced Executive Analytics Charts (Requirement 2) */}
+      <ChartsSection officers={activeForce} tierName="Entire District Force" />
+
+      {/* 8. Recent Activity Timeline Panel (Requirement 5) */}
+      <ActivityTimeline officers={activeForce} />
+
+      {/* 9. Filtered Personnel Roster Data Table */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+            <Award className="w-4.5 h-4.5 text-blue-600" />
+            <span>District Personnel Records Roster ({filteredOfficers.length} Records)</span>
+          </h3>
         </div>
-      ) : errorMessage && allOfficers.length === 0 ? (
-        <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-3 shadow-sm">
-          <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
-          <div className="flex-1">
-            <p className="font-extrabold text-rose-950">Notice</p>
-            <p className="text-xs text-rose-800 font-medium mt-0.5">{errorMessage}</p>
-          </div>
-          <button
-            onClick={() => loadData(true)}
-            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
-          >
-            Retry
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* 1. HIGH-LEVEL ADMINISTRATIVE METRIC CARDS (Exact 6 vibrant cards - Instruction 1) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            {/* Card 1: Total Force */}
-            <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Force</span>
-                <Briefcase className="w-5 h-5 text-slate-300" />
-              </div>
-              <h3 className="text-3xl font-black tracking-tight">{metrics.totalForce}</h3>
-              <p className="text-[11px] font-bold text-slate-300 mt-1">Entire Active Roster</p>
-            </div>
+        <OfficerTable
+          officers={filteredOfficers}
+          onRefresh={() => loadData(true)}
+        />
+      </div>
 
-            {/* Card 2: Gazetted Officers (GOs) */}
-            <Link
-              href="/dashboard/gazetted"
-              className="bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition-all group flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Gazetted GOs</span>
-                <ShieldCheck className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-3xl font-black tracking-tight">{metrics.gosCount}</h3>
-              <p className="text-[11px] font-bold opacity-90 mt-1 flex items-center justify-between">
-                <span>IPS / PPS Leaders</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </p>
-            </Link>
+      {/* 10. Floating AI Assistant Copilot (Requirement 8) */}
+      <FloatingAIAssistant officers={allOfficers} />
 
-            {/* Card 3: Non-Gazetted (NGOs) */}
-            <Link
-              href="/dashboard/non-gazetted"
-              className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl p-5 text-white shadow-md hover:shadow-lg transition-all group flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Non-Gazetted</span>
-                <Users className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-3xl font-black tracking-tight">{metrics.ngosCount}</h3>
-              <p className="text-[11px] font-bold opacity-90 mt-1 flex items-center justify-between">
-                <span>Inspectors & Field Force</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </p>
-            </Link>
+      {/* Add Personnel Modal */}
+      {isAddModalOpen && (
+        <AddOfficerModal
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={() => loadData(true)}
+        />
+      )}
 
-            {/* Card 4: Thana Prabhari (SHO/SO) */}
-            <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Thana Prabhari</span>
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="text-3xl font-black tracking-tight">{metrics.thanaPrabhariCount}</h3>
-              <p className="text-[11px] font-bold opacity-90 mt-1">SHO / SO Station Chiefs</p>
-            </div>
-
-            {/* Card 5: Chowki Incharges */}
-            <div className="bg-gradient-to-br from-purple-600 via-indigo-700 to-indigo-900 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Chowki Incharges</span>
-                <MapPin className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="text-3xl font-black tracking-tight">{metrics.chowkiInchargeCount}</h3>
-              <p className="text-[11px] font-bold opacity-90 mt-1">Outpost Commanders</p>
-            </div>
-
-            {/* Card 6: Suspended (Red Background) */}
-            <div className="bg-gradient-to-br from-rose-600 via-red-700 to-red-900 rounded-2xl p-5 text-white shadow-md flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Suspended</span>
-                <UserX className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="text-3xl font-black tracking-tight">{metrics.suspendedCount}</h3>
-              <p className="text-[11px] font-bold opacity-90 mt-1">Disciplinary Action</p>
-            </div>
-          </div>
-
-          {/* Automated Tenure & Retirement Alert Banner */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-200/60 text-amber-900 border border-amber-300/80 shrink-0">
-                <AlertTriangle className="w-4.5 h-4.5" />
-              </div>
-              <div>
-                <p className="font-extrabold text-amber-950">
-                  Tenure & Retirement Automated Alert Engine
-                </p>
-                <p className="text-amber-800 text-[11px] font-medium">
-                  Flagged <strong className="text-rose-700 font-bold">{metrics.overstayCount} officer(s)</strong> exceeding 36 months in current posting and{' '}
-                  <strong className="text-amber-900 font-bold">{metrics.retiringSoonCount} officer(s)</strong> retiring within 12 months across active district cadres.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-              <span className="px-3 py-1 rounded-lg bg-rose-100 text-rose-800 font-bold border border-rose-300 text-[11px] flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> {metrics.overstayCount} Overstay Flagged
-              </span>
-            </div>
-          </div>
-
-          {/* 2. RESTORED ANALYTICAL CHARTS (Instruction 2) */}
-          <ChartsSection officers={activeForce} tierName="Entire District Force" />
-        </>
+      {/* Timeline Modal */}
+      {selectedOfficerForTimeline && (
+        <TimelineModal
+          officer={selectedOfficerForTimeline}
+          onClose={() => setSelectedOfficerForTimeline(null)}
+        />
       )}
     </div>
   )
