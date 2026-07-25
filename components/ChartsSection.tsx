@@ -32,23 +32,19 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
-  // 1. Core Rank Bar Chart Data
+  // 1. Core Rank Bar Chart Data (Only active non-zero ranks dynamically)
   const rankData = useMemo(() => {
-    const counts: Record<string, number> = {
-      'Inspector': 0,
-      'Sub-Inspector': 0,
-      'Head Constable': 0,
-      'Constable': 0,
-      'Computer Operator': 0,
-      'Gazetted Officer': 0
-    }
+    const counts: Record<string, number> = {}
 
     officers.forEach((o) => {
       const r = o.coreRank || 'Constable'
       counts[r] = (counts[r] || 0) + 1
     })
 
-    return Object.entries(counts).map(([name, count]) => ({ name, count }))
+    // Filter out 0-count ranks so no empty bars/labels display
+    return Object.entries(counts)
+      .filter(([_, count]) => count > 0)
+      .map(([name, count]) => ({ name, count }))
   }, [officers])
 
   // 2. Strict 5-Category Caste Ratio Data (.reduce() transformation)
@@ -138,7 +134,7 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
         </div>
       </div>
 
-      {/* RIGHT: Clean Donut Chart (1 Column, Fixed Height h-[420px], Clean Recharts Legend) */}
+      {/* RIGHT: Clean Donut Chart */}
       <div className="lg:col-span-1 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[420px]">
         <div className="flex items-center gap-2.5 mb-2 pb-2 border-b border-slate-100 shrink-0">
           <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">

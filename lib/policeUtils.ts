@@ -31,7 +31,7 @@ export function getSmartDutyDisplay(coreRank: string = '', specialDuty: string =
 
 /**
  * 2. parsePoliceRank
- * Fixes data display bug for Gazetted Officers (Addl. SP, DSP, CO, SP, IPS, PPS)
+ * Strictly normalizes raw rank strings into accurate Core Ranks without invalid categories
  */
 export function parsePoliceRank(rawRank: string = '', roleType: string = '', officerTier: string = ''): ParsedRank {
   const r = (rawRank || '').trim()
@@ -74,7 +74,7 @@ export function parsePoliceRank(rawRank: string = '', roleType: string = '', off
     specialDuty = 'Traffic'
   }
 
-  // 4. Core Rank Normalization (Accurate Gazetted & Non-Gazetted detection)
+  // 4. Core Rank Normalization
   let coreRank: string = 'Constable'
 
   // A. Gazetted Officers (IPS / PPS / SP / Addl. SP / DSP / CO)
@@ -106,7 +106,7 @@ export function parsePoliceRank(rawRank: string = '', roleType: string = '', off
   } else if (officerTier === 'Gazetted' || cleanUpper.includes('IPS') || cleanUpper.includes('PPS')) {
     coreRank = 'Gazetted Officer'
   }
-  // B. Non-Gazetted Officers
+  // B. Non-Gazetted & Staff
   else if (cleanRankStr.includes('ऑपरेटर') || cleanRankStr.includes('कंप्यूटर') || cleanUpper.includes('OPERATOR')) {
     coreRank = 'Computer Operator'
   } else if (cleanRankStr.includes('उ0नि0') || cleanRankStr.includes('उप निरीक्षक') || cleanUpper.includes('SUB-INSPECTOR') || cleanUpper.includes('SI')) {
