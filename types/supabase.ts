@@ -120,6 +120,7 @@ export interface Database {
           subject_duty: string
           assigned_date?: string
           status?: string
+          created_at?: string
         }
         Insert: {
           id?: string
@@ -127,6 +128,7 @@ export interface Database {
           subject_duty: string
           assigned_date?: string
           status?: string
+          created_at?: string
         }
         Update: {
           id?: string
@@ -138,4 +140,15 @@ export interface Database {
       }
     }
   }
+}
+
+// Convenient export types
+export type Officer = Database['public']['Tables']['officers']['Row']
+export type PostingHistory = Database['public']['Tables']['posting_history']['Row']
+export type PostingApplication = Database['public']['Tables']['posting_applications']['Row']
+export type NodalOfficer = Database['public']['Tables']['nodal_officers']['Row']
+
+// Joined type for single officer profile with career history
+export type OfficerProfileWithHistory = Officer & {
+  posting_history: PostingHistory[]
 }
