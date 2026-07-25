@@ -64,14 +64,14 @@ export function Sidebar() {
       }`}
     >
       <div>
-        {/* Official UP Police Emblem Branding & Collapse Toggle */}
+        {/* User's Uploaded UP Police Logo & Collapse Toggle */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shrink-0 overflow-hidden p-1">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0 overflow-hidden">
               <img
                 src="/up-police-logo.png"
                 alt="Uttar Pradesh Police Logo"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain drop-shadow-xs"
               />
             </div>
             {!collapsed && (
