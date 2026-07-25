@@ -4,13 +4,8 @@ import { FilterState, OfficerWithCalculated } from '@/types/police'
 import { ExportButton } from './ExportButton'
 import { 
   Search, 
-  Filter, 
   RotateCcw, 
-  AlertTriangle, 
-  Shield, 
-  Users, 
-  Briefcase,
-  Clock
+  AlertTriangle 
 } from 'lucide-react'
 
 interface FiltersProps {
@@ -52,7 +47,7 @@ export function Filters({
     filters.retiringSoonOnly
 
   return (
-    <div className="bg-police-900/80 backdrop-blur-sm border border-police-700/60 rounded-2xl p-5 shadow-xl space-y-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
       {/* Top Search Bar & Export Button */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search Bar */}
@@ -60,15 +55,15 @@ export function Filters({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by Officer Name, PNO Number (e.g., 182050012), or Posting..."
+            placeholder="Search by Officer Name, PNO Number (e.g., 182050012), or Current Posting..."
             value={filters.searchQuery}
             onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
-            className="w-full bg-police-950/80 border border-police-700/80 focus:border-amber-400/80 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/20 transition-all"
+            className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all font-medium"
           />
           {filters.searchQuery && (
             <button
               onClick={() => setFilters((prev) => ({ ...prev, searchQuery: '' }))}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 font-bold"
             >
               ×
             </button>
@@ -81,7 +76,7 @@ export function Filters({
             <button
               type="button"
               onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-police-800 hover:bg-police-700 text-slate-300 hover:text-white text-xs border border-police-700 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs border border-slate-300 transition-colors font-semibold"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
@@ -92,17 +87,17 @@ export function Filters({
         </div>
       </div>
 
-      {/* Dropdown Filters Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1 border-t border-police-700/40">
+      {/* Dropdown Filters Grid - Light Theme */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-200">
         {/* Rank Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Rank
           </label>
           <select
             value={filters.rank}
             onChange={(e) => setFilters((prev) => ({ ...prev, rank: e.target.value }))}
-            className="w-full bg-police-950/80 border border-police-700 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
           >
             <option value="ALL">All Ranks</option>
             {rankOptions.map((r) => (
@@ -115,13 +110,13 @@ export function Filters({
 
         {/* Caste Category Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Caste Category
           </label>
           <select
             value={filters.caste}
             onChange={(e) => setFilters((prev) => ({ ...prev, caste: e.target.value }))}
-            className="w-full bg-police-950/80 border border-police-700 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
           >
             <option value="ALL">All Categories</option>
             <option value="General">General</option>
@@ -133,13 +128,13 @@ export function Filters({
 
         {/* Role Type Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Role Assignment
           </label>
           <select
             value={filters.role}
             onChange={(e) => setFilters((prev) => ({ ...prev, role: e.target.value }))}
-            className="w-full bg-police-950/80 border border-police-700 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
           >
             <option value="ALL">All Roles</option>
             {roleOptions.map((r) => (
@@ -152,13 +147,13 @@ export function Filters({
 
         {/* Status Filter */}
         <div>
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
             Service Status
           </label>
           <select
             value={filters.status}
             onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-            className="w-full bg-police-950/80 border border-police-700 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
           >
             <option value="ALL">All Statuses</option>
             <option value="Active">Active</option>
@@ -174,13 +169,13 @@ export function Filters({
           <button
             type="button"
             onClick={() => setFilters((prev) => ({ ...prev, overstayOnly: !prev.overstayOnly }))}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
               filters.overstayOnly
-                ? 'bg-red-500/20 text-red-300 border-red-500/60 shadow-lg shadow-red-500/10'
-                : 'bg-police-950/80 text-slate-400 border-police-700 hover:text-slate-200'
+                ? 'bg-rose-100 text-rose-800 border-rose-300 shadow-sm'
+                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
             }`}
           >
-            <AlertTriangle className={`w-3.5 h-3.5 ${filters.overstayOnly ? 'text-red-400 animate-bounce' : ''}`} />
+            <AlertTriangle className={`w-3.5 h-3.5 ${filters.overstayOnly ? 'text-rose-600 animate-bounce' : 'text-slate-500'}`} />
             <span>Overstay (&gt;36m)</span>
           </button>
         </div>

@@ -29,7 +29,6 @@ export default function NonGazettedDashboardPage() {
         setErrorMessage(error.message)
         setOfficers([])
       } else if (dbOfficers) {
-        // Enrich real Supabase database records (using snake_case database schema)
         const enriched = dbOfficers.map((o) => enrichOfficerData(o))
         setOfficers(enriched)
       } else {
@@ -69,7 +68,7 @@ export default function NonGazettedDashboardPage() {
     retiringSoonOnly: false
   })
 
-  // Unique Ranks and Roles extracted from real Supabase records
+  // Unique Ranks and Roles
   const rankOptions = useMemo(
     () => Array.from(new Set(officers.map((o) => o.rank).filter(Boolean))),
     [officers]
@@ -94,19 +93,19 @@ export default function NonGazettedDashboardPage() {
       // Rank filter
       if (filters.rank !== 'ALL' && o.rank !== filters.rank) return false
 
-      // Caste filter (snake_case caste_category)
+      // Caste filter
       if (filters.caste !== 'ALL' && o.caste_category !== filters.caste) return false
 
-      // Role filter (snake_case role_type)
+      // Role filter
       if (filters.role !== 'ALL' && o.role_type !== filters.role) return false
 
       // Status filter
       if (filters.status !== 'ALL' && o.status !== filters.status) return false
 
-      // Overstay toggle (>36 months)
+      // Overstay toggle
       if (filters.overstayOnly && !o.isOverstay) return false
 
-      // Retiring soon toggle (<12 months)
+      // Retiring soon toggle
       if (filters.retiringSoonOnly && !o.isRetiringSoon) return false
 
       return true
@@ -115,53 +114,53 @@ export default function NonGazettedDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-police-700/40">
+      {/* Page Header - Rebranded for Ayodhya Camp Office */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
             Non-Gazetted Cadre Dashboard (NGOs)
           </h2>
-          <p className="text-xs text-slate-400">
-            Inspectors (SHO), Sub-Inspectors (SI), Chowki Incharges & Staff Field Force • Live Supabase Connection
+          <p className="text-xs text-slate-500 font-medium">
+            Inspectors (SHO), Sub-Inspectors (SI), Chowki Incharges & Staff Field Force • Camp Office, SSP Ayodhya
           </p>
         </div>
         <div className="flex items-center gap-2.5">
           <button
             onClick={loadNonGazettedData}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-police-800 hover:bg-police-700 text-xs text-slate-200 transition-colors border border-police-700 shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors border border-slate-300 shadow-sm"
             title="Refresh database records"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
             <span>Sync Supabase</span>
           </button>
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-emerald-500/10 text-emerald-300 border-emerald-500/30 flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-200 flex items-center gap-1.5 shadow-sm">
+            <Database className="w-3.5 h-3.5 text-emerald-600" />
             Supabase Live
           </span>
         </div>
       </div>
 
-      {/* Loading State */}
+      {/* Loading & Empty States */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3 bg-police-900/60 rounded-2xl border border-police-700/60">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
-          <p className="text-sm font-semibold text-slate-200">Querying Supabase Database...</p>
-          <p className="text-xs text-slate-400">Fetching Non-Gazetted Officers records (`officers` table)</p>
+        <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-sm font-bold text-slate-900">Querying Supabase Database...</p>
+          <p className="text-xs text-slate-500 font-medium">Fetching Non-Gazetted Officers records (`officers` table)</p>
         </div>
       ) : errorMessage ? (
-        <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 flex items-center gap-3">
-          <ShieldAlert className="w-6 h-6 text-red-400 shrink-0" />
+        <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-3 shadow-sm">
+          <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0" />
           <div>
-            <p className="font-bold">Supabase Query Error</p>
-            <p className="text-xs text-red-300/80">{errorMessage}</p>
+            <p className="font-extrabold text-rose-950">Supabase Query Error</p>
+            <p className="text-xs text-rose-800 font-medium">{errorMessage}</p>
           </div>
         </div>
       ) : officers.length === 0 ? (
-        <div className="py-16 text-center bg-police-900/80 rounded-2xl border border-police-700/60 p-8">
-          <ShieldAlert className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-200">No Non-Gazetted Officer Records Found</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
+        <div className="py-16 text-center bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+          <ShieldAlert className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-900">No Non-Gazetted Officer Records Found</h3>
+          <p className="text-xs text-slate-500 font-medium max-w-md mx-auto mt-1">
             No personnel found in Supabase 'officers' table with officer_tier = 'Non-Gazetted'. Upload data to your Supabase project to display records.
           </p>
         </div>

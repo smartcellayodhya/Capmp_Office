@@ -1,81 +1,98 @@
 import pandas as pd
 from supabase import create_client, Client
 
-# 1. आपके असली Supabase क्रेडेंशियल्स
+# 1. Supabase Credentials
 SUPABASE_URL = "https://afqzjhoasrnrczwmucem.supabase.co"
 SUPABASE_KEY = "sb_publishable_9LRSwepb2L_AVcIKvmQ2Bw_6QzcJ_rd"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 2. आपकी Excel फाइल का नाम
 excel_filename = "Master Data CA all.xlsx"
 
 try:
     print(f"📂 Reading Excel file: {excel_filename}...")
-    # सीधे Excel फाइल से 'Main Data Ideal Format' वाली शीट पढ़ रहे हैं
-    df_main = pd.read_excel(excel_filename, sheet_name='Main Data Ideal Format')
+    xls = pd.ExcelFile(excel_filename)
+    df_ngo = pd.read_excel(xls, sheet_name='Main Data Ideal Format')
+    df_go = pd.read_excel(xls, sheet_name='Addl,Dysp detail NEW 13.5.25')
 except Exception as e:
-    print(f"❌ Could not read the file. Please check the file name or sheet name. Error: {e}")
+    print(f"❌ Error reading file: {e}")
     exit()
 
-# डेटा क्लीनिंग: खाली जगहों को हटाना और PNO को ठीक करना
-df_main = df_main.fillna('')
-df_main['पीएनओ'] = df_main['पीएनओ'].astype(str).str.replace(r'\.0$', '', regex=True)
-
 # ---------------------------------------------------------
-# फंक्शन 1: Officers Table में डेटा अपलोड करना
+# फंक्शन 1: Non-Gazetted Officers (Main Sheet) अपलोड करना
 # ---------------------------------------------------------
-def upload_officers_data():
-    print("\n⏳ Uploading Officers Data...")
-    officers_list = []
+def upload_ngo_data():
+    print("\n⏳ Uploading Non-Gazetted Officers (NGOs)...")
+    df_ngo_clean = df_ngo.fillna('')
+    df_ngo_clean['पीएनओ'] = df_ngo_clean['पीएनओ'].astype(str).str.replace(r'\.0$', '', regex=True)
     
-    for index, row in df_main.iterrows():
-        # अगर PNO खाली है, तो उसे छोड़ दें
-        if str(row['पीएनओ']).strip() == '' or str(row['पीएनओ']).lower() == 'nan':
-            continue
+    officers_list = []
+    for index, row in df_ngo_clean.iterrows():
+        pno = str(row['पीएनओ']).strip()
+        if pno == '' or pno.lower() == 'nan': continue
             
-        # Gazetted या Non-Gazetted तय करना
-        rank = str(row['पद'])
-        officer_tier = 'Gazetted' if rank in ['पुलिस उपाधीक्षक', 'सहा0पु0अधी0', 'अपर पुलिस अधीक्षक'] else 'Non-Gazetted'
-
         officers_list.append({
-            "pno": str(row['पीएनओ']).strip(),
+            "pno": pno,
             "name": str(row['नाम']).strip(),
-            "rank": rank,
-            "officer_tier": officer_tier,
+            "rank": str(row['पद']).strip(),
+            "officer_tier": 'Non-Gazetted',
             "current_posting": str(row['वर्तमान नियुक्ति व दिनांक']).strip(),
             "caste_category": str(row.get('जाति श्रेणी (सामान्य,ओबीसी,एससी,एसटी )', 'Unknown')).strip(),
-            "status": "Anumodit" if str(row.get('अनुमोदित', '')).strip() != '' else "Active"
+            "status": "Active"
         })
     
-    # Supabase में एक साथ (Batch) इन्सर्ट करना
     if officers_list:
-        try:
-            # हम 50-50 के बैच में डेटा भेज रहे हैं
-            batch_size = 50
-            total_uploaded = 0
-            for i in range(0, len(officers_list), batch_size):
-                batch = officers_list[i:i+batch_size]
-                supabase.table('officers').upsert(batch, on_conflict='pno').execute()
-                total_uploaded += len(batch)
-                print(f"   Uploaded {total_uploaded} / {len(officers_list)} officers...")
-            print("✅ Main Officers data uploaded successfully!")
-        except Exception as e:
-            print(f"❌ Error uploading officers: {e}")
+        for i in range(0, len(officers_list), 50):
+            batch = officers_list[i:i+50]
+            supabase.table('officers').upsert(batch, on_conflict='pno').execute()
+        print(f"✅ {len(officers_list)} Non-Gazetted Officers uploaded!")
 
 # ---------------------------------------------------------
-# फंक्शन 2: Past Postings (पूर्व नियुक्तियां) अपलोड करना
+# फंक्शन 2: Gazetted Officers (GO Sheet) अपलोड करना
+# ---------------------------------------------------------
+def upload_go_data():
+    print("\n⏳ Uploading Gazetted Officers (GOs)...")
+    df_go_clean = df_go.fillna('')
+    
+    go_list = []
+    for index, row in df_go_clean.iterrows():
+        name = str(row['नाम पुलिस उपाधीक्षक']).strip()
+        if name == '' or name.lower() == 'nan': continue
+        
+        # PNO नहीं है, इसलिए हम GO_1, GO_2 बना रहे हैं
+        mock_pno = f"GO_UPP_{index + 1}"
+        
+        posting = str(row['वर्तमान नियुक्ति स्थान']).strip()
+        # पद का नाम नियुक्ति स्थान से तय करना
+        rank = 'अपर पुलिस अधीक्षक' if 'अ0पु0अ0' in posting else 'पुलिस उपाधीक्षक'
+
+        go_list.append({
+            "pno": mock_pno,
+            "name": name,
+            "rank": rank,
+            "officer_tier": 'Gazetted',
+            "current_posting": posting,
+            "caste_category": str(row.get('जाति/उपजाति', 'Unknown')).split('/')[0].strip(),
+            "status": "Active"
+        })
+        
+    if go_list:
+        supabase.table('officers').upsert(go_list, on_conflict='pno').execute()
+        print(f"✅ {len(go_list)} Gazetted Officers uploaded!")
+
+# ---------------------------------------------------------
+# फंक्शन 3: Past Postings (पूर्व नियुक्तियां) अपलोड करना
 # ---------------------------------------------------------
 def upload_past_postings():
     print("\n⏳ Uploading Past Postings Data...")
+    df_ngo_clean = df_ngo.fillna('')
+    df_ngo_clean['पीएनओ'] = df_ngo_clean['पीएनओ'].astype(str).str.replace(r'\.0$', '', regex=True)
+    
     postings_list = []
+    past_columns = [col for col in df_ngo_clean.columns if 'पूर्व नियुक्तियां' in col]
     
-    # 'पूर्व नियुक्तियां' शब्द वाले सभी कॉलम ढूँढें
-    past_columns = [col for col in df_main.columns if 'पूर्व नियुक्तियां' in col]
-    
-    for index, row in df_main.iterrows():
+    for index, row in df_ngo_clean.iterrows():
         pno = str(row['पीएनओ']).strip()
-        if pno == '' or pno.lower() == 'nan':
-            continue
+        if pno == '' or pno.lower() == 'nan': continue
             
         for col in past_columns:
             posting_detail = str(row[col]).strip()
@@ -86,22 +103,14 @@ def upload_past_postings():
                 })
                 
     if postings_list:
-        try:
-            batch_size = 100
-            total_uploaded = 0
-            for i in range(0, len(postings_list), batch_size):
-                batch = postings_list[i:i+batch_size]
-                supabase.table('posting_history').insert(batch).execute()
-                total_uploaded += len(batch)
-                print(f"   Uploaded {total_uploaded} / {len(postings_list)} past postings...")
-            print("✅ Past Postings data uploaded successfully!")
-        except Exception as e:
-            print(f"❌ Error uploading past postings: {e}")
+        for i in range(0, len(postings_list), 100):
+            batch = postings_list[i:i+100]
+            supabase.table('posting_history').insert(batch).execute()
+        print(f"✅ {len(postings_list)} Past Postings uploaded!")
 
 # ---------------------------------------------------------
-# स्क्रिप्ट को चलाना
-# ---------------------------------------------------------
 if __name__ == "__main__":
-    upload_officers_data()
+    upload_ngo_data()
+    upload_go_data()
     upload_past_postings()
-    print("\n🎉 All tasks completed successfully! Check your Supabase database.")
+    print("\n🎉 ALL DONE! Your database is now completely perfect.")
