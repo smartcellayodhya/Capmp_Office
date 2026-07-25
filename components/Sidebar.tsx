@@ -64,10 +64,10 @@ export function Sidebar() {
       }`}
     >
       <div>
-        {/* Dusri Photo UP Police Logo in Circle Container */}
+        {/* Clean Perfectly Filled Circle UP Police Logo */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-xs">
+            <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden p-0.5 shadow-2xs">
               <img
                 src="/up-police-logo.png"
                 alt="Uttar Pradesh Police Logo"
