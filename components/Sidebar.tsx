@@ -10,7 +10,6 @@ import {
   Building2,
   FileText,
   Award,
-  Shield,
   ChevronRight,
   ChevronLeft
 } from 'lucide-react'
@@ -65,11 +64,15 @@ export function Sidebar() {
       }`}
     >
       <div>
-        {/* Branding & Collapse Toggle */}
+        {/* Official UP Police Emblem Branding & Collapse Toggle */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shrink-0">
-              <Shield className="w-6 h-6 text-white fill-white/20" />
+            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shrink-0 overflow-hidden p-1">
+              <img
+                src="/up-police-logo.png"
+                alt="Uttar Pradesh Police Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             {!collapsed && (
               <div className="truncate">
@@ -93,7 +96,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Command Navigation Menu (Without COMMAND MODULES title text) */}
+        {/* Command Navigation Menu */}
         <div className="p-3 space-y-1.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (pathname === '/' && item.href === '/dashboard/live')
