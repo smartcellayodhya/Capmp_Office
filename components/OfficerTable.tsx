@@ -15,7 +15,7 @@ interface OfficerTableProps {
   officers: OfficerWithCalculated[]
 }
 
-export function OfficerTable({ officers }: OfficerTableProps) {
+export function OfficerTable({ officers = [] }: OfficerTableProps) {
   const [selectedOfficer, setSelectedOfficer] = useState<OfficerWithCalculated | null>(null)
 
   return (

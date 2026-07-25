@@ -21,8 +21,8 @@ export function Filters({
   filters,
   setFilters,
   rankOptions,
-  roleOptions,
-  filteredOfficers,
+  roleOptions = [],
+  filteredOfficers = [],
   tierName
 }: FiltersProps) {
   const handleReset = () => {
