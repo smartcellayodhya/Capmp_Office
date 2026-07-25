@@ -13,7 +13,7 @@ export interface OfficerWithCalculated extends OfficerRow {
   retirementMonthsRemaining: number
   isRetiringSoon: boolean
   isRetiringUrgent: boolean
-  coreRank: 'Inspector' | 'Sub-Inspector' | 'Head Constable' | 'Constable' | 'Computer Operator'
+  coreRank: string
   gender: 'Male' | 'Female'
   specialDuty: string
   smartDutyDisplay: string

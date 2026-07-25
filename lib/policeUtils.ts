@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx'
 import { OfficerRow, OfficerWithCalculated } from '@/types/police'
 
 export interface ParsedRank {
-  coreRank: 'Inspector' | 'Sub-Inspector' | 'Head Constable' | 'Constable' | 'Computer Operator'
+  coreRank: string
   gender: 'Male' | 'Female'
   specialDuty: string
   isSuspendedByRank: boolean
@@ -10,7 +10,6 @@ export interface ParsedRank {
 
 /**
  * 1. getSmartDutyDisplay
- * Determines exact field display role based on coreRank and specialDuty.
  */
 export function getSmartDutyDisplay(coreRank: string = '', specialDuty: string = ''): string {
   const c = coreRank.toLowerCase()
@@ -32,8 +31,9 @@ export function getSmartDutyDisplay(coreRank: string = '', specialDuty: string =
 
 /**
  * 2. parsePoliceRank
+ * Fixes data display bug for Gazetted Officers (Addl. SP, DSP, CO, SP, IPS, PPS)
  */
-export function parsePoliceRank(rawRank: string = '', roleType: string = ''): ParsedRank {
+export function parsePoliceRank(rawRank: string = '', roleType: string = '', officerTier: string = ''): ParsedRank {
   const r = (rawRank || '').trim()
   const role = (roleType || '').trim()
   const combined = `${r} ${role}`.toLowerCase()
@@ -43,6 +43,7 @@ export function parsePoliceRank(rawRank: string = '', roleType: string = ''): Pa
 
   // Clean rank string
   const cleanRankStr = r.replace(/^नि0\s+/, '').trim()
+  const cleanUpper = cleanRankStr.toUpperCase()
 
   // 2. Gender Extraction ('महिला', 'म0')
   let gender: 'Male' | 'Female' = 'Male'
@@ -73,18 +74,48 @@ export function parsePoliceRank(rawRank: string = '', roleType: string = ''): Pa
     specialDuty = 'Traffic'
   }
 
-  // 4. Core Rank Normalization (Exactly 5 Clean Columns)
-  let coreRank: ParsedRank['coreRank'] = 'Constable'
+  // 4. Core Rank Normalization (Accurate Gazetted & Non-Gazetted detection)
+  let coreRank: string = 'Constable'
 
-  if (cleanRankStr.includes('ऑपरेटर') || cleanRankStr.includes('कंप्यूटर') || cleanRankStr.toUpperCase().includes('OPERATOR')) {
+  // A. Gazetted Officers (IPS / PPS / SP / Addl. SP / DSP / CO)
+  if (
+    cleanRankStr.includes('अपर पुलिस अधीक्षक') || 
+    cleanRankStr.includes('एएसपी') || 
+    cleanUpper.includes('ADDITIONAL SP') || 
+    cleanUpper.includes('ADDL. SP') || 
+    cleanUpper.includes('ASP')
+  ) {
+    coreRank = 'Addl. SP'
+  } else if (
+    cleanRankStr.includes('पुलिस उपाधीक्षक') || 
+    cleanRankStr.includes('क्षेत्राधिकारी') || 
+    cleanRankStr.includes('डीएसपी') || 
+    cleanUpper.includes('DSP') || 
+    cleanUpper.includes('DY. SP') || 
+    cleanUpper.includes('CO')
+  ) {
+    coreRank = 'DSP / CO'
+  } else if (
+    cleanRankStr.includes('पुलिस अधीक्षक') || 
+    cleanRankStr.includes('एसएसपी') || 
+    cleanRankStr.includes('एसपी') || 
+    cleanUpper.includes('SSP') || 
+    cleanUpper.includes('SP')
+  ) {
+    coreRank = 'SP / SSP'
+  } else if (officerTier === 'Gazetted' || cleanUpper.includes('IPS') || cleanUpper.includes('PPS')) {
+    coreRank = 'Gazetted Officer'
+  }
+  // B. Non-Gazetted Officers
+  else if (cleanRankStr.includes('ऑपरेटर') || cleanRankStr.includes('कंप्यूटर') || cleanUpper.includes('OPERATOR')) {
     coreRank = 'Computer Operator'
-  } else if (cleanRankStr.includes('उ0नि0') || cleanRankStr.includes('उप निरीक्षक') || cleanRankStr.toUpperCase().includes('SUB-INSPECTOR') || cleanRankStr.toUpperCase().includes('SI')) {
+  } else if (cleanRankStr.includes('उ0नि0') || cleanRankStr.includes('उप निरीक्षक') || cleanUpper.includes('SUB-INSPECTOR') || cleanUpper.includes('SI')) {
     coreRank = 'Sub-Inspector'
-  } else if (cleanRankStr.includes('निरीक्षक') || cleanRankStr.includes('नि0') || cleanRankStr.toUpperCase().includes('INSPECTOR') || cleanRankStr.toUpperCase().includes('SHO')) {
+  } else if (cleanRankStr.includes('निरीक्षक') || cleanRankStr.includes('नि0') || cleanUpper.includes('INSPECTOR') || cleanUpper.includes('SHO')) {
     coreRank = 'Inspector'
-  } else if (cleanRankStr.includes('हे0 का0') || cleanRankStr.includes('हे0का0') || cleanRankStr.includes('मुख्य आरक्षी') || cleanRankStr.toUpperCase().includes('HEAD CONSTABLE') || cleanRankStr.toUpperCase().includes('HC')) {
+  } else if (cleanRankStr.includes('हे0 का0') || cleanRankStr.includes('हे0का0') || cleanRankStr.includes('मुख्य आरक्षी') || cleanUpper.includes('HEAD CONSTABLE') || cleanUpper.includes('HC')) {
     coreRank = 'Head Constable'
-  } else if (cleanRankStr.includes('का0') || cleanRankStr.includes('आरक्षी') || cleanRankStr.toUpperCase().includes('CONSTABLE')) {
+  } else if (cleanRankStr.includes('का0') || cleanRankStr.includes('आरक्षी') || cleanUpper.includes('CONSTABLE')) {
     coreRank = 'Constable'
   }
 
@@ -147,7 +178,7 @@ export function getRetirementInfo(dob?: string | null) {
 }
 
 export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: string): OfficerWithCalculated {
-  const parsed = parsePoliceRank(officer.rank || '', officer.role_type || '')
+  const parsed = parsePoliceRank(officer.rank || '', officer.role_type || '', officer.officer_tier || '')
 
   const effectiveStatus = (officer.status === 'Suspended' || parsed.isSuspendedByRank) 
     ? 'Suspended' 
