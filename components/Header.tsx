@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { GlobalSearch } from './GlobalSearch'
 import { QuickActionToolbar } from './QuickActionToolbar'
 import { OfficerWithCalculated } from '@/types/police'
-import { Clock, MapPin, User, ShieldCheck } from 'lucide-react'
+import { User, ShieldCheck } from 'lucide-react'
 
 interface HeaderProps {
   activeTierName?: string
@@ -21,57 +20,24 @@ export function Header({
   onRefresh = () => {},
   onSelectOfficer
 }: HeaderProps) {
-  const [currentTime, setCurrentTime] = useState<string>('')
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date()
-      setCurrentTime(
-        now.toLocaleDateString('en-IN', {
-          weekday: 'short',
-          day: '2-digit',
-          month: 'short'
-        }) +
-          ' | ' +
-          now.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-      )
-    }
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
-    return () => clearInterval(timer)
-  }, [])
-
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-6 py-3 shadow-xs">
-      <div className="flex flex-row items-center justify-between gap-4 w-full">
-        {/* Left Title & Location (Single Row) */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-black text-slate-900 tracking-tight whitespace-nowrap">
-              {activeTierName}
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              HQ Live
-            </span>
-          </div>
-          <div className="hidden md:flex items-center gap-2 text-xs text-slate-500 font-medium border-l border-slate-200 pl-3">
-            <span className="flex items-center gap-1 text-slate-800 font-bold whitespace-nowrap">
-              <MapPin className="w-3.5 h-3.5 text-blue-600" /> SSP Ayodhya
-            </span>
-            <span className="flex items-center gap-1 text-slate-400 whitespace-nowrap">
-              <Clock className="w-3.5 h-3.5 text-slate-400" /> {currentTime}
-            </span>
-          </div>
+    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-6 py-4 shadow-xs">
+      <div className="flex justify-between items-center w-full">
+        {/* LEFT SIDE: Only Title and HQ Live Badge (Instruction 1) */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <h1 className="text-lg font-black text-slate-900 tracking-tight">
+            {activeTierName}
+          </h1>
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            HQ Live
+          </span>
         </div>
 
-        {/* Right Single Straight Line Flexbox Controls */}
-        <div className="flex flex-row items-center justify-end gap-3 flex-1 min-w-0">
-          {/* Search Bar */}
-          <div className="w-64 lg:w-80 shrink-1">
+        {/* RIGHT SIDE: Search Bar, Action Buttons, and Profile inside flex items-center gap-4 */}
+        <div className="flex items-center gap-4">
+          {/* Search Bar with Fixed Width */}
+          <div className="w-48 sm:w-64 md:w-72 shrink-0">
             <GlobalSearch officers={officers} onSelectOfficer={onSelectOfficer} />
           </div>
 

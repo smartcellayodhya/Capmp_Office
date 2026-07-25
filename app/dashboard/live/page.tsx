@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { getAllOfficers, getPostingApplications } from '@/services/database'
 import { enrichOfficerData } from '@/lib/policeUtils'
 import { getCachedOfficers, setCachedOfficers } from '@/lib/cache'
-import { OfficerWithCalculated, FilterState } from '@/types/police'
+import { OfficerWithCalculated } from '@/types/police'
 import { CommandCenter } from '@/components/CommandCenter'
 import { NaturalLanguageQuery } from '@/components/NaturalLanguageQuery'
 import { AIInsightsPanel } from '@/components/AIInsightsPanel'
@@ -105,7 +105,7 @@ export default function LiveDashboardPage() {
   }, [allOfficers, activeForce])
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-8 pb-24 pt-2">
       {loading && allOfficers.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -128,9 +128,9 @@ export default function LiveDashboardPage() {
       ) : (
         <>
           {/* ROW 1: THE 6 MAIN COLORED METRIC CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
             {/* 1. Total Force */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32 border border-slate-800">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Force</span>
                 <Briefcase className="w-4 h-4 text-slate-300" />
@@ -140,7 +140,7 @@ export default function LiveDashboardPage() {
             </div>
 
             {/* 2. Gazetted Officers */}
-            <Link href="/dashboard/gazetted" className="bg-gradient-to-br from-amber-500 to-amber-700 p-5 rounded-2xl text-white shadow-md hover:shadow-lg transition-all group flex flex-col justify-between h-32">
+            <Link href="/dashboard/gazetted" className="bg-gradient-to-br from-amber-500 to-amber-700 p-5 rounded-2xl text-white shadow-md hover:shadow-lg transition-all group flex flex-col justify-between h-32 border border-amber-600">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Gazetted GOs</span>
                 <ShieldCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -153,7 +153,7 @@ export default function LiveDashboardPage() {
             </Link>
 
             {/* 3. Non-Gazetted */}
-            <Link href="/dashboard/non-gazetted" className="bg-gradient-to-br from-blue-600 to-indigo-800 p-5 rounded-2xl text-white shadow-md hover:shadow-lg transition-all group flex flex-col justify-between h-32">
+            <Link href="/dashboard/non-gazetted" className="bg-gradient-to-br from-blue-600 to-indigo-800 p-5 rounded-2xl text-white shadow-md hover:shadow-lg transition-all group flex flex-col justify-between h-32 border border-blue-700">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Non-Gazetted</span>
                 <Users className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -166,7 +166,7 @@ export default function LiveDashboardPage() {
             </Link>
 
             {/* 4. Thana Prabhari */}
-            <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32">
+            <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32 border border-emerald-700">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Thana Prabhari</span>
                 <Building2 className="w-4 h-4" />
@@ -176,7 +176,7 @@ export default function LiveDashboardPage() {
             </div>
 
             {/* 5. Chowki Incharges */}
-            <div className="bg-gradient-to-br from-purple-600 to-indigo-900 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32">
+            <div className="bg-gradient-to-br from-purple-600 to-indigo-900 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32 border border-purple-700">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Chowki Incharges</span>
                 <MapPin className="w-4 h-4" />
@@ -186,7 +186,7 @@ export default function LiveDashboardPage() {
             </div>
 
             {/* 6. Suspended */}
-            <div className="bg-gradient-to-br from-rose-600 to-red-900 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32">
+            <div className="bg-gradient-to-br from-rose-600 to-red-900 p-5 rounded-2xl text-white shadow-md flex flex-col justify-between h-32 border border-rose-700">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Suspended</span>
                 <UserX className="w-4 h-4" />
@@ -196,11 +196,11 @@ export default function LiveDashboardPage() {
             </div>
           </div>
 
-          {/* ROW 2: THE TWO CHARTS (Bar Chart on left 2-cols, Donut Chart on right 1-col) */}
+          {/* ROW 2: THE TWO CHARTS */}
           <ChartsSection officers={activeForce} tierName="Entire District Force" />
 
-          {/* ROW 3: AI SEARCH BAR + OPERATIONAL ALERTS & AI INSIGHTS */}
-          <div className="space-y-6">
+          {/* ROW 3: AI SEARCH BAR + OPERATIONAL ALERTS & AI INSIGHTS (Breathe Room mt-8 - Instruction 4) */}
+          <div className="space-y-6 mt-8">
             <NaturalLanguageQuery
               officers={allOfficers}
               onSelectFilterResult={(results) => {
@@ -221,7 +221,7 @@ export default function LiveDashboardPage() {
             />
           </div>
 
-          {/* FLOATING AI ASSISTANT COPILOT */}
+          {/* FLOATING AI ASSISTANT COPILOT (Independent Z-[9999] - Instruction 3) */}
           <FloatingAIAssistant officers={allOfficers} />
         </>
       )}

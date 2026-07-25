@@ -66,11 +66,11 @@ export function FloatingAIAssistant({ officers }: FloatingAIAssistantProps) {
 
   return (
     <>
-      {/* Floating Trigger Button */}
+      {/* Floating Trigger Button completely outside content (Instruction 3) */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 p-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-2xl hover:scale-105 transition-all flex items-center gap-2 font-extrabold text-xs group border border-blue-400/40"
+        className="fixed bottom-8 right-8 z-[9999] p-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-2xl hover:scale-105 transition-all flex items-center gap-2 font-extrabold text-xs group border border-blue-400/40"
         title="Open AI Command Assistant"
       >
         <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
@@ -80,7 +80,7 @@ export function FloatingAIAssistant({ officers }: FloatingAIAssistantProps) {
 
       {/* Floating AI Drawer */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[560px] animate-fadeIn">
+        <div className="fixed bottom-8 right-8 z-[9999] w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[560px] animate-fadeIn">
           {/* Header */}
           <div className="p-4 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center justify-between border-b border-slate-800">
             <div className="flex items-center gap-2.5">
