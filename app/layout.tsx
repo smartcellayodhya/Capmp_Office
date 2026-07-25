@@ -18,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-police-950 text-slate-100 flex min-h-screen`}>
+      <body className={`${inter.className} bg-police-950 text-slate-100 flex min-h-screen antialiased`}>
         {/* Sidebar Navigation */}
         <Sidebar />
 
