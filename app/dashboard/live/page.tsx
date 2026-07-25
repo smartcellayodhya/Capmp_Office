@@ -10,13 +10,13 @@ import {
   Users, 
   Building2, 
   FileText, 
-  Award, 
   AlertTriangle,
   RefreshCw,
   Loader2,
   ChevronRight,
   Clock,
-  Briefcase
+  Briefcase,
+  UserX
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -78,12 +78,14 @@ export default function LiveDashboardPage() {
 
   // Active force metrics (excluding status === 'Transferred')
   const activeOfficers = allOfficers.filter((o) => o.status !== 'Transferred')
-  const goOfficers = activeOfficers.filter((o) => o.officer_tier === 'Gazetted')
-  const ngoOfficers = activeOfficers.filter((o) => o.officer_tier === 'Non-Gazetted')
-  const staffOfficers = activeOfficers.filter((o) => o.officer_tier === 'Camp Staff')
-
-  const totalActiveForce = activeOfficers.length
-  const overstayCount = activeOfficers.filter((o) => o.isOverstay).length
+  const goOfficers = activeOfficers.filter((o) => o.officer_tier === 'Gazetted' && o.status !== 'Suspended')
+  const ngoOfficers = activeOfficers.filter((o) => o.officer_tier === 'Non-Gazetted' && o.status !== 'Suspended')
+  const staffOfficers = activeOfficers.filter((o) => o.officer_tier === 'Camp Staff' && o.status !== 'Suspended')
+  
+  // Total suspended personnel count
+  const suspendedOfficers = allOfficers.filter((o) => o.status === 'Suspended')
+  const totalActiveForce = activeOfficers.filter((o) => o.status !== 'Suspended').length
+  const overstayCount = activeOfficers.filter((o) => o.isOverstay && o.status !== 'Suspended').length
   const retiringSoonCount = activeOfficers.filter((o) => o.isRetiringSoon).length
 
   return (
@@ -95,7 +97,7 @@ export default function LiveDashboardPage() {
             📊 Executive Analytics Command Dashboard
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            District Force Analytics, Personnel Distribution & Automated Alert Engine • Camp Office, SSP Ayodhya
+            District Force Analytics, Core Rank Distribution & Automated Alert Engine • Camp Office, SSP Ayodhya
           </p>
         </div>
         <button
@@ -130,9 +132,9 @@ export default function LiveDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Summary Executive Cards */}
+          {/* Summary Executive Cards Grid including Red Suspended Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Card 1: Total Force Strength */}
+            {/* Card 1: Total Active Force */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
@@ -143,8 +145,8 @@ export default function LiveDashboardPage() {
                 </div>
               </div>
               <h3 className="text-3xl font-black text-slate-900 tracking-tight">{totalActiveForce}</h3>
-              <p className="text-xs font-bold text-slate-800 mt-1">Total Force Strength</p>
-              <p className="text-[11px] text-slate-500 mt-1 font-medium">All Cadres Active</p>
+              <p className="text-xs font-bold text-slate-800 mt-1">Total Active Force</p>
+              <p className="text-[11px] text-slate-500 mt-1 font-medium">Duty On-Field</p>
             </div>
 
             {/* Card 2: Gazetted GOs */}
@@ -189,26 +191,20 @@ export default function LiveDashboardPage() {
               </p>
             </Link>
 
-            {/* Card 4: Camp Office Staff */}
-            <Link
-              href="/dashboard/staff"
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group"
-            >
+            {/* Card 4: STRIKING RED CARD - Suspended Personnel */}
+            <div className="bg-gradient-to-br from-rose-50 to-red-100/60 border border-rose-300 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                  Secretariat
+                <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-600 text-white shadow-sm">
+                  Suspended
                 </span>
-                <div className="p-2.5 rounded-xl bg-teal-100 text-teal-800 border border-teal-200 group-hover:scale-110 transition-transform">
-                  <Building2 className="w-5 h-5" />
+                <div className="p-2.5 rounded-xl bg-rose-600 text-white shadow-sm">
+                  <UserX className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">{staffOfficers.length}</h3>
-              <p className="text-xs font-bold text-slate-800 mt-1">Camp Office Staff</p>
-              <p className="text-[11px] text-slate-500 mt-1 font-medium flex items-center justify-between">
-                <span>Secretariat & Desks</span>
-                <ChevronRight className="w-3.5 h-3.5 text-teal-600" />
-              </p>
-            </Link>
+              <h3 className="text-3xl font-black text-rose-950 tracking-tight">{suspendedOfficers.length}</h3>
+              <p className="text-xs font-extrabold text-rose-900 mt-1">Suspended Personnel</p>
+              <p className="text-[11px] text-rose-700 mt-1 font-bold">Disciplinary Action Roster</p>
+            </div>
 
             {/* Card 5: Pending Transfer Requests */}
             <Link
@@ -216,10 +212,10 @@ export default function LiveDashboardPage() {
               className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
                   Action Due
                 </span>
-                <div className="p-2.5 rounded-xl bg-rose-100 text-rose-800 border border-rose-200 group-hover:scale-110 transition-transform">
+                <div className="p-2.5 rounded-xl bg-indigo-100 text-indigo-800 border border-indigo-200 group-hover:scale-110 transition-transform">
                   <FileText className="w-5 h-5" />
                 </div>
               </div>
@@ -227,7 +223,7 @@ export default function LiveDashboardPage() {
               <p className="text-xs font-bold text-slate-800 mt-1">Pending Transfers</p>
               <p className="text-[11px] text-slate-500 mt-1 font-medium flex items-center justify-between">
                 <span>Awaiting Decision</span>
-                <ChevronRight className="w-3.5 h-3.5 text-rose-600" />
+                <ChevronRight className="w-3.5 h-3.5 text-indigo-600" />
               </p>
             </Link>
           </div>
@@ -255,7 +251,7 @@ export default function LiveDashboardPage() {
             </div>
           </div>
 
-          {/* High-Level Recharts Analytics Visualizations */}
+          {/* High-Level Recharts Analytics Visualizations (Strictly 5 Core Ranks) */}
           <ChartsSection officers={activeOfficers} tierName="Entire District Force" />
         </>
       )}

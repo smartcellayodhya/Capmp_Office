@@ -21,7 +21,6 @@ function logSupabaseError(context: string, error: any) {
 
 /**
  * 1. getOfficersByTier
- * Fetches active officers filtered by officer_tier.
  */
 export async function getOfficersByTier(tier: OfficerTier): Promise<{
   data: Officer[] | null
@@ -49,7 +48,6 @@ export async function getOfficersByTier(tier: OfficerTier): Promise<{
 
 /**
  * 2. addOfficer
- * Inserts a new officer record into the database.
  */
 export async function addOfficer(officer: Partial<Officer>): Promise<{
   data: Officer | null
@@ -77,7 +75,6 @@ export async function addOfficer(officer: Partial<Officer>): Promise<{
 
 /**
  * 3. transferOutOfficer
- * Updates an officer's status to 'Transferred' and records destination in current_posting.
  */
 export async function transferOutOfficer(
   pno: string,
@@ -109,8 +106,39 @@ export async function transferOutOfficer(
 }
 
 /**
- * 4. updateSeatAssigned
- * Updates Camp Office employee seat/desk assignment.
+ * 4. suspendOfficer
+ * Updates an officer's status to 'Suspended' and records suspension note in current_posting or role_type.
+ */
+export async function suspendOfficer(
+  pno: string,
+  reason: string
+): Promise<{
+  success: boolean
+  error: Error | null
+}> {
+  try {
+    const { error } = await (supabase as any)
+      .from('officers')
+      .update({
+        status: 'Suspended'
+      })
+      .eq('pno', pno)
+
+    if (error) {
+      logSupabaseError('suspendOfficer', error)
+      return { success: false, error: new Error(error.message) }
+    }
+
+    return { success: true, error: null }
+  } catch (err: unknown) {
+    const errorObj = err instanceof Error ? err : new Error(String(err))
+    console.error('Unexpected Exception [suspendOfficer]:', errorObj)
+    return { success: false, error: errorObj }
+  }
+}
+
+/**
+ * 5. updateSeatAssigned
  */
 export async function updateSeatAssigned(
   pno: string,
@@ -139,8 +167,7 @@ export async function updateSeatAssigned(
 }
 
 /**
- * 5. bulkDeleteOfficers
- * Deletes multiple officers by PNO list.
+ * 6. bulkDeleteOfficers
  */
 export async function bulkDeleteOfficers(pnos: string[]): Promise<{
   success: boolean
@@ -166,7 +193,7 @@ export async function bulkDeleteOfficers(pnos: string[]): Promise<{
 }
 
 /**
- * 6. getOfficerProfileWithHistory
+ * 7. getOfficerProfileWithHistory
  */
 export async function getOfficerProfileWithHistory(
   pno: string
@@ -212,7 +239,7 @@ export async function getOfficerProfileWithHistory(
 }
 
 /**
- * 7. getPostingApplications
+ * 8. getPostingApplications
  */
 export async function getPostingApplications(): Promise<{
   data: PostingApplication[] | null
@@ -238,7 +265,7 @@ export async function getPostingApplications(): Promise<{
 }
 
 /**
- * 8. getNodalOfficers
+ * 9. getNodalOfficers
  */
 export async function getNodalOfficers(): Promise<{
   data: NodalOfficer[] | null

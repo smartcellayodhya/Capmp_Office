@@ -1,6 +1,73 @@
 import * as XLSX from 'xlsx'
 import { OfficerRow, OfficerWithCalculated } from '@/types/police'
 
+export interface ParsedRank {
+  coreRank: 'Inspector' | 'Sub-Inspector' | 'Head Constable' | 'Constable' | 'Computer Operator'
+  gender: 'Male' | 'Female'
+  specialDuty: string
+  isSuspendedByRank: boolean
+}
+
+/**
+ * 1. parsePoliceRank
+ * Parses 28 raw police ranks (in Hindi/English) to extract Core Rank, Gender, Special Duty, and Suspension status.
+ */
+export function parsePoliceRank(rawRank: string = ''): ParsedRank {
+  const r = (rawRank || '').trim()
+
+  // 1. Suspension Check ('नि0 ', 'निलंबित', 'suspended')
+  const isSuspendedByRank = r.startsWith('नि0 ') || r.includes('निलंबित') || r.toLowerCase().includes('suspended')
+
+  // Clean rank string without suspension prefix for core rank matching
+  const cleanRankStr = r.replace(/^नि0\s+/, '').trim()
+
+  // 2. Gender Extraction ('महिला', 'म0', 'म0 ')
+  let gender: 'Male' | 'Female' = 'Male'
+  if (r.includes('महिला') || r.includes('म0') || r.toLowerCase().includes('female') || r.toLowerCase().includes('w/')) {
+    gender = 'Female'
+  }
+
+  // 3. Special Duty Extraction
+  let specialDuty = 'General Duty'
+  if (r.includes('सीसीटीएनएस') || r.toUpperCase().includes('CCTNS')) {
+    specialDuty = 'CCTNS'
+  } else if (r.includes('मालखाना') || r.toLowerCase().includes('malkhana')) {
+    specialDuty = 'Maalkhana Incharge'
+  } else if (r.includes('का0मु0') || r.includes('मुन्शी') || r.includes('मुंशी')) {
+    specialDuty = 'Munshi'
+  } else if (r.includes('हे0मो0') || r.includes('मोहर्रिर')) {
+    specialDuty = 'Head Moharir'
+  } else if (r.includes('चालक') || r.includes('चाल0') || r.toLowerCase().includes('driver')) {
+    specialDuty = 'Driver'
+  } else if (r.includes('एलआईयू') || r.toUpperCase().includes('LIU')) {
+    specialDuty = 'LIU'
+  } else if (r.includes('यातायात') || r.includes('ट्रैफिक') || r.toUpperCase().includes('TRAFFIC') || r.includes('TI')) {
+    specialDuty = 'Traffic'
+  }
+
+  // 4. Core Rank Normalization (Exactly 5 Clean Columns)
+  let coreRank: ParsedRank['coreRank'] = 'Constable'
+
+  if (cleanRankStr.includes('ऑपरेटर') || cleanRankStr.includes('कंप्यूटर') || cleanRankStr.toUpperCase().includes('OPERATOR')) {
+    coreRank = 'Computer Operator'
+  } else if (cleanRankStr.includes('उ0नि0') || cleanRankStr.includes('उप निरीक्षक') || cleanRankStr.toUpperCase().includes('SUB-INSPECTOR') || cleanRankStr.toUpperCase().includes('SI')) {
+    coreRank = 'Sub-Inspector'
+  } else if (cleanRankStr.includes('निरीक्षक') || cleanRankStr.includes('नि0') || cleanRankStr.toUpperCase().includes('INSPECTOR') || cleanRankStr.toUpperCase().includes('SHO')) {
+    coreRank = 'Inspector'
+  } else if (cleanRankStr.includes('हे0 का0') || cleanRankStr.includes('हे0का0') || cleanRankStr.includes('मुख्य आरक्षी') || cleanRankStr.toUpperCase().includes('HEAD CONSTABLE') || cleanRankStr.toUpperCase().includes('HC')) {
+    coreRank = 'Head Constable'
+  } else if (cleanRankStr.includes('का0') || cleanRankStr.includes('आरक्षी') || cleanRankStr.toUpperCase().includes('CONSTABLE')) {
+    coreRank = 'Constable'
+  }
+
+  return {
+    coreRank,
+    gender,
+    specialDuty,
+    isSuspendedByRank
+  }
+}
+
 export function getBatchYear(pno: string): string {
   if (!pno || typeof pno !== 'string' || pno.length < 2) return 'N/A'
   const digits = pno.substring(0, 2)
@@ -52,6 +119,12 @@ export function getRetirementInfo(dob?: string | null) {
 }
 
 export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: string): OfficerWithCalculated {
+  const parsed = parsePoliceRank(officer.rank || '')
+
+  const effectiveStatus = (officer.status === 'Suspended' || parsed.isSuspendedByRank) 
+    ? 'Suspended' 
+    : (officer.status || 'Active')
+
   const safeOfficer: OfficerRow = {
     id: officer.id || 'N/A',
     pno: officer.pno || 'N/A',
@@ -63,7 +136,7 @@ export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: st
     caste_category: officer.caste_category || 'General',
     dob: officer.dob || '',
     joining_date: officer.joining_date || '',
-    status: officer.status || 'Active',
+    status: effectiveStatus as any,
     mobile_number: officer.mobile_number || 'N/A',
     seat_assigned: officer.seat_assigned || 'Unassigned Desk',
     created_at: officer.created_at,
@@ -80,6 +153,9 @@ export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: st
     batchYear,
     tenureMonths,
     isOverstay: overstay,
+    coreRank: parsed.coreRank,
+    gender: parsed.gender,
+    specialDuty: parsed.specialDuty,
     ...retInfo
   }
 }
@@ -89,7 +165,10 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     'PNO Number': o.pno || 'N/A',
     'Batch Year': o.batchYear || 'N/A',
     'Officer Name': o.name || 'Unknown',
-    'Rank': o.rank || 'N/A',
+    'Core Rank': o.coreRank || 'N/A',
+    'Raw Rank': o.rank || 'N/A',
+    'Gender': o.gender || 'Male',
+    'Special Duty Tag': o.specialDuty || 'General Duty',
     'Tier': o.officer_tier || 'N/A',
     'Role Type': o.role_type || 'N/A',
     'Caste Category': o.caste_category || 'N/A',
@@ -98,9 +177,7 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     'Mobile Number': o.mobile_number || 'N/A',
     'Tenure (Months)': o.tenureMonths ?? 0,
     'Overstay Status': o.isOverstay ? 'OVERSTAY (>36 Mos)' : 'Normal',
-    'Retirement Status': o.isRetiringUrgent ? 'Urgent (<6 Mos)' : o.isRetiringSoon ? 'Retiring Soon (<12 Mos)' : 'Regular',
     'Status': o.status || 'Active',
-    'Date of Birth': o.dob || 'N/A',
     'Joining Date': o.joining_date || 'N/A'
   }))
 
@@ -111,6 +188,9 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     { wch: 12 },
     { wch: 24 },
     { wch: 18 },
+    { wch: 20 },
+    { wch: 10 },
+    { wch: 20 },
     { wch: 15 },
     { wch: 18 },
     { wch: 14 },
@@ -119,9 +199,7 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     { wch: 15 },
     { wch: 15 },
     { wch: 20 },
-    { wch: 22 },
     { wch: 12 },
-    { wch: 14 },
     { wch: 14 }
   ]
   worksheet['!cols'] = colWidths

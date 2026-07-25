@@ -4,14 +4,17 @@ import { useState } from 'react'
 import { OfficerWithCalculated } from '@/types/police'
 import { TimelineModal } from './TimelineModal'
 import { TransferOutModal } from './TransferOutModal'
+import { SuspendModal } from './SuspendModal'
 import { 
   ShieldAlert, 
   AlertTriangle, 
-  Clock, 
   Award, 
   Eye,
   ExternalLink,
-  Trash2
+  Trash2,
+  UserX,
+  ShieldCheck,
+  Tag
 } from 'lucide-react'
 
 interface OfficerTableProps {
@@ -23,25 +26,104 @@ interface OfficerTableProps {
 export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: OfficerTableProps) {
   const [selectedOfficer, setSelectedOfficer] = useState<OfficerWithCalculated | null>(null)
   const [transferOfficer, setTransferOfficer] = useState<OfficerWithCalculated | null>(null)
+  const [suspendTarget, setSuspendTarget] = useState<OfficerWithCalculated | null>(null)
 
-  // Filter out Transferred officers from default active view
-  const activeOfficers = officers.filter((o) => o.status !== 'Transferred')
+  // Status Filter State: 'Active' | 'Suspended' | 'Transferred' | 'ALL'
+  const [statusFilter, setStatusFilter] = useState<'Active' | 'Suspended' | 'Transferred' | 'ALL'>('Active')
+
+  // Filtered officers list according to quick status filter
+  const displayedOfficers = officers.filter((o) => {
+    if (statusFilter === 'Active') return o.status !== 'Transferred' && o.status !== 'Suspended'
+    if (statusFilter === 'Suspended') return o.status === 'Suspended'
+    if (statusFilter === 'Transferred') return o.status === 'Transferred'
+    return true
+  })
+
+  // Helper for Special Duty pill color styling
+  const getSpecialDutyBadge = (duty: string = 'General Duty') => {
+    switch (duty) {
+      case 'CCTNS':
+        return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'Maalkhana Incharge':
+        return 'bg-amber-100 text-amber-900 border-amber-300'
+      case 'Munshi':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'Head Moharir':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200'
+      case 'Driver':
+        return 'bg-teal-100 text-teal-800 border-teal-200'
+      case 'LIU':
+        return 'bg-rose-100 text-rose-800 border-rose-200'
+      case 'Traffic':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200'
+    }
+  }
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-      {/* Table Header Bar */}
-      <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+      {/* Table Header Bar & Quick Status Toggle */}
+      <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Award className="w-4 h-4 text-blue-600" /> Active Personnel List
+          <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <Award className="w-4 h-4 text-blue-600" /> Cadre Personnel Roster
           </h3>
           <p className="text-[11px] text-slate-500 font-medium">
-            Click on any officer row to inspect complete career timeline or perform transfers
+            Inspect core ranks, special duties, gender, and issue disciplinary suspensions
           </p>
         </div>
-        <span className="text-xs font-bold text-slate-700 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-          Showing {activeOfficers.length} Active Officer(s)
-        </span>
+
+        {/* Quick Status Toggle Bar */}
+        <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-sm self-start md:self-center">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('Active')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              statusFilter === 'Active'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Show Active ({officers.filter((o) => o.status !== 'Transferred' && o.status !== 'Suspended').length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('Suspended')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              statusFilter === 'Suspended'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Show Suspended ({officers.filter((o) => o.status === 'Suspended').length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('Transferred')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              statusFilter === 'Transferred'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Show Transferred ({officers.filter((o) => o.status === 'Transferred').length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              statusFilter === 'ALL'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            All ({officers.length})
+          </button>
+        </div>
       </div>
 
       {/* Main Data Table */}
@@ -49,118 +131,136 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-100/90 text-slate-700 uppercase tracking-wider font-extrabold border-b border-slate-200">
-              <th className="py-3.5 px-4">PNO & Batch</th>
-              <th className="py-3.5 px-4">Officer Name & Rank</th>
-              <th className="py-3.5 px-4">Tier & Caste</th>
-              <th className="py-3.5 px-4">Current Posting & Role</th>
-              <th className="py-3.5 px-4">Tenure & Overstay Alert</th>
-              <th className="py-3.5 px-4">Status & Retirement</th>
+              <th className="py-3.5 px-4">PNO & Name</th>
+              <th className="py-3.5 px-4">Core Rank</th>
+              <th className="py-3.5 px-4">Gender</th>
+              <th className="py-3.5 px-4">Special Duty Tag</th>
+              <th className="py-3.5 px-4">Current Posting</th>
+              <th className="py-3.5 px-4">Service Status</th>
               <th className="py-3.5 px-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {activeOfficers.length === 0 ? (
+            {displayedOfficers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <ShieldAlert className="w-8 h-8 text-slate-400" />
-                    <p className="font-bold text-slate-800">No active officers found matching criteria.</p>
-                    <p className="text-[11px] text-slate-500">Click "+ Add New Officer" above to add records.</p>
+                    <p className="font-bold text-slate-800">No personnel found for status filter '{statusFilter}'.</p>
+                    <p className="text-[11px] text-slate-500">Toggle status filter above or add new records.</p>
                   </div>
                 </td>
               </tr>
             ) : (
-              activeOfficers.map((o) => (
+              displayedOfficers.map((o) => (
                 <tr
                   key={o.id || o.pno}
                   className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
                   onClick={() => setSelectedOfficer(o)}
                 >
-                  {/* PNO & Batch */}
+                  {/* PNO & Name */}
                   <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">{o.pno || 'N/A'}</div>
-                    <span className="inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                      {o.batchYear || 'N/A'}
-                    </span>
-                  </td>
-
-                  {/* Officer Name & Rank */}
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                    <div className="font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
                       {o.name || 'Unknown Officer'}
                     </div>
-                    <div className="text-[11px] text-slate-500 font-medium">{o.rank || 'N/A'}</div>
+                    <div className="text-[11px] text-slate-500 font-medium">PNO: {o.pno || 'N/A'}</div>
                   </td>
 
-                  {/* Tier & Caste */}
+                  {/* Core Rank */}
                   <td className="py-3.5 px-4">
-                    <div className="font-semibold text-slate-800">{o.officer_tier || 'N/A'}</div>
-                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {o.caste_category || 'N/A'}
+                    <span className="font-extrabold text-slate-900">{o.coreRank || 'Constable'}</span>
+                    <div className="text-[10px] text-slate-500 font-medium truncate max-w-[140px]" title={o.rank}>
+                      {o.rank}
+                    </div>
+                  </td>
+
+                  {/* Gender */}
+                  <td className="py-3.5 px-4">
+                    <span
+                      className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                        o.gender === 'Female'
+                          ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                          : 'bg-slate-100 text-slate-800 border border-slate-200'
+                      }`}
+                    >
+                      {o.gender || 'Male'}
                     </span>
                   </td>
 
-                  {/* Current Posting & Role */}
+                  {/* Special Duty Tag (Small Colored Pill) */}
+                  <td className="py-3.5 px-4">
+                    <span
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getSpecialDutyBadge(
+                        o.specialDuty
+                      )}`}
+                    >
+                      <Tag className="w-2.5 h-2.5 opacity-70" />
+                      {o.specialDuty || 'General Duty'}
+                    </span>
+                  </td>
+
+                  {/* Current Posting & Tenure */}
                   <td className="py-3.5 px-4 max-w-xs">
                     <div className="font-bold text-slate-900 truncate" title={o.current_posting || 'N/A'}>
                       {o.current_posting || 'N/A'}
                     </div>
-                    <div className="text-[11px] text-blue-700 font-semibold">{o.role_type || 'N/A'}</div>
+                    <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                      <span>Tenure: {o.tenureMonths ?? 0}m</span>
+                      {o.isOverstay && (
+                        <span className="text-[10px] text-rose-700 font-extrabold flex items-center gap-0.5">
+                          <AlertTriangle className="w-3 h-3" /> Overstay
+                        </span>
+                      )}
+                    </div>
                   </td>
 
-                  {/* Tenure & Overstay Alert */}
+                  {/* Service Status */}
                   <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">
-                      {o.tenureMonths ?? 0} Months
-                    </div>
-                    {o.isOverstay ? (
-                      <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shadow-sm animate-pulse">
-                        <AlertTriangle className="w-3 h-3 text-rose-600" /> Overstay / Transfer Due
+                    {o.status === 'Suspended' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs animate-pulse">
+                        <UserX className="w-3 h-3" /> Suspended
+                      </span>
+                    ) : o.status === 'Transferred' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                        Transferred
                       </span>
                     ) : (
-                      <span className="text-[10px] text-emerald-700 font-bold">
-                        Normal Tenure (&lt;36m)
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" /> {o.status || 'Active'}
                       </span>
                     )}
                   </td>
 
-                  {/* Status & Retirement */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          o.status === 'Active' ? 'bg-emerald-500' : o.status === 'Anumodit' ? 'bg-blue-500' : 'bg-amber-500'
-                        }`}
-                      />
-                      <span className="font-bold text-slate-800">{o.status || 'Active'}</span>
-                    </div>
-
-                    {o.isRetiringUrgent ? (
-                      <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                        <Clock className="w-3 h-3 text-amber-700" /> Retiring in {o.retirementMonthsRemaining} Mos
-                      </span>
-                    ) : o.isRetiringSoon ? (
-                      <span className="inline-block mt-1 text-[10px] text-amber-800 font-bold">
-                        Retires &lt; 12 Mos
-                      </span>
-                    ) : null}
-                  </td>
-
-                  {/* Action Triggers */}
+                  {/* Actions */}
                   <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
-                      {/* Transfer Out Button */}
-                      <button
-                        type="button"
-                        onClick={() => setTransferOfficer(o)}
-                        className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1"
-                        title="Transfer Out to another district/unit"
-                      >
-                        <ExternalLink className="w-3 h-3 text-amber-700" />
-                        <span>Transfer</span>
-                      </button>
+                      {/* Suspend Action Button */}
+                      {o.status !== 'Suspended' && o.status !== 'Transferred' && (
+                        <button
+                          type="button"
+                          onClick={() => setSuspendTarget(o)}
+                          className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
+                          title="Issue Disciplinary Suspension"
+                        >
+                          <UserX className="w-3 h-3 text-rose-600" />
+                          <span>Suspend</span>
+                        </button>
+                      )}
 
-                      {/* View Career Timeline Button */}
+                      {/* Transfer Out Button */}
+                      {o.status !== 'Transferred' && (
+                        <button
+                          type="button"
+                          onClick={() => setTransferOfficer(o)}
+                          className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
+                          title="Transfer Out"
+                        >
+                          <ExternalLink className="w-3 h-3 text-amber-700" />
+                          <span>Transfer</span>
+                        </button>
+                      )}
+
+                      {/* View Career Timeline */}
                       <button
                         type="button"
                         onClick={() => setSelectedOfficer(o)}
@@ -176,7 +276,7 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
                           type="button"
                           onClick={() => onDeleteOfficer(o.pno)}
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-700 border border-slate-200 transition-colors"
-                          title="Delete Officer Record"
+                          title="Delete Record"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -203,6 +303,17 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
         <TransferOutModal
           officer={transferOfficer}
           onClose={() => setTransferOfficer(null)}
+          onSuccess={() => {
+            if (onRefresh) onRefresh()
+          }}
+        />
+      )}
+
+      {/* Suspend Modal */}
+      {suspendTarget && (
+        <SuspendModal
+          officer={suspendTarget}
+          onClose={() => setSuspendTarget(null)}
           onSuccess={() => {
             if (onRefresh) onRefresh()
           }}

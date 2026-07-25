@@ -30,19 +30,19 @@ const CASTE_COLORS: Record<string, string> = {
 }
 
 export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
-  // Rank Distribution Data
+  // Rank Distribution Data - Strictly grouped into 5 Core Ranks
   const rankData = useMemo(() => {
-    const counts: Record<string, number> = {}
-    officers.forEach((o) => {
-      let shortRank = o.rank || 'Unassigned'
-      if (shortRank.includes('Senior Superintendent')) shortRank = 'SSP'
-      else if (shortRank.includes('Additional Superintendent') || shortRank.includes('Addl SP')) shortRank = 'Addl SP'
-      else if (shortRank.includes('Deputy SP') || shortRank.includes('Circle Officer')) shortRank = 'CO / DSP'
-      else if (shortRank.includes('Inspector')) shortRank = 'Inspector'
-      else if (shortRank.includes('Sub-Inspector')) shortRank = 'Sub-Inspector'
-      else if (shortRank.includes('Head Constable')) shortRank = 'Head Constable'
+    const counts: Record<string, number> = {
+      'Inspector': 0,
+      'Sub-Inspector': 0,
+      'Head Constable': 0,
+      'Constable': 0,
+      'Computer Operator': 0
+    }
 
-      counts[shortRank] = (counts[shortRank] || 0) + 1
+    officers.forEach((o) => {
+      const core = o.coreRank || 'Constable'
+      counts[core] = (counts[core] || 0) + 1
     })
 
     return Object.entries(counts).map(([name, count]) => ({ name, count }))
@@ -65,7 +65,7 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      {/* Rank-wise Bar Chart - Crisp Light Theme */}
+      {/* Rank-wise Bar Chart - Strictly 5 Clean Columns */}
       <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -74,33 +74,30 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                Rank-Wise Cadre Strength Distribution
+                Core Rank Strength Distribution
               </h2>
               <p className="text-[11px] text-slate-500 font-medium">
-                Active personnel strength by rank ({tierName})
+                Normalized 5-Cadre strength analysis ({tierName})
               </p>
             </div>
           </div>
           <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-            {officers.length} Active Officers
+            {officers.length} Active Personnel
           </span>
         </div>
 
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rankData} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+            <BarChart data={rankData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
+                tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }}
                 axisLine={{ stroke: '#CBD5E1' }}
                 tickLine={false}
-                interval={0}
-                angle={-15}
-                textAnchor="end"
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
+                tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }}
                 axisLine={{ stroke: '#CBD5E1' }}
                 tickLine={false}
               />
@@ -116,19 +113,22 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
                 cursor={{ fill: 'rgba(241, 245, 249, 0.8)' }}
               />
               <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {rankData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={index % 2 === 0 ? '#1D4ED8' : '#0284C7'}
-                  />
-                ))}
+                {rankData.map((entry, index) => {
+                  const colors = ['#1E40AF', '#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA']
+                  return (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={colors[index % colors.length]}
+                    />
+                  )
+                })}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Caste Category Distribution Pie Chart - Crisp Light Theme */}
+      {/* Caste Category Ratio Pie Chart */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -140,7 +140,7 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
                 Caste Category Ratio
               </h2>
               <p className="text-[11px] text-slate-500 font-medium">
-                Diversity & category breakup
+                Category breakup across force
               </p>
             </div>
           </div>
