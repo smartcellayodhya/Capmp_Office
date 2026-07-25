@@ -1,0 +1,70 @@
+'use client'
+
+import { mockNodalOfficers, mockOfficers } from '@/lib/mockData'
+import { Award, ShieldCheck, Calendar, User, Briefcase } from 'lucide-react'
+
+export default function NodalOfficersPage() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between pb-2 border-b border-police-700/40">
+        <div>
+          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+            <Award className="w-5 h-5 text-amber-400" /> Nodal Officers Duty Roster
+          </h2>
+          <p className="text-xs text-slate-400">
+            Specialized Wing Officers (VIP Security, Cyber Crime, Anti-Terrorist & Election Cell)
+          </p>
+        </div>
+        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30">
+          {mockNodalOfficers.length} Nodal Duties Active
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {mockNodalOfficers.map((nodal) => {
+          const officer = mockOfficers.find((o) => o.pno === nodal.officer_pno)
+          return (
+            <div
+              key={nodal.id}
+              className="bg-police-900/80 backdrop-blur-sm border border-police-700/60 rounded-2xl p-5 shadow-xl flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Special Duty Nodal
+                  </span>
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Active
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 font-bold">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-100">{officer?.name}</h3>
+                    <p className="text-xs text-amber-400 font-medium">{officer?.rank}</p>
+                    <p className="text-[10px] text-slate-400">PNO: {nodal.officer_pno}</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-police-850 border border-police-700/50 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Assigned Subject Wing</span>
+                  <p className="font-bold text-sm text-purple-200">{nodal.subject_duty}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-police-700/50 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1 text-[11px]">
+                  <Calendar className="w-3.5 h-3.5 text-blue-400" /> Assigned: {nodal.assigned_date}
+                </span>
+                <span className="text-slate-300 font-medium">UP Police HQ</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
