@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { OfficerWithCalculated } from '@/types/police'
 import {
   BarChart,
@@ -13,21 +13,9 @@ import {
   Pie,
   Cell,
   Legend,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
   CartesianGrid
 } from 'recharts'
-import { 
-  BarChart3, 
-  PieChart as PieIcon, 
-  TrendingUp, 
-  Users, 
-  Download, 
-  Maximize2,
-  Clock
-} from 'lucide-react'
+import { BarChart3, PieChart as PieIcon, Download } from 'lucide-react'
 import { exportOfficersToExcel } from '@/lib/policeUtils'
 
 interface ChartsSectionProps {
@@ -35,19 +23,16 @@ interface ChartsSectionProps {
   tierName: string
 }
 
-const CASTE_COLORS: Record<string, string> = {
+const CATEGORY_COLORS: Record<string, string> = {
   General: '#2563EB', // Blue 600
   OBC: '#059669',     // Emerald 600
   SC: '#D97706',      // Amber 600
   ST: '#7C3AED',      // Purple 600
-  'N/A': '#64748B'    // Slate 500
+  Minority: '#DC2626' // Red 600
 }
 
 export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
-  const [activeTab, setActiveTab] = useState<'cadre' | 'trend' | 'retirement' | 'gender'>('cadre')
-  const chartRef = useRef<HTMLDivElement>(null)
-
-  // 1. Rank Distribution Data (Horizontal Bar)
+  // 1. Core Rank Bar Chart Data
   const rankData = useMemo(() => {
     const counts: Record<string, number> = {
       'Inspector': 0,
@@ -66,68 +51,34 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
     return Object.entries(counts).map(([name, count]) => ({ name, count }))
   }, [officers])
 
-  // 2. Caste Category Ratio Data (Donut Chart)
+  // 2. Strict 5-Category Caste Ratio Data (.reduce() transformation)
   const casteData = useMemo(() => {
-    const counts: Record<string, number> = { General: 0, OBC: 0, SC: 0, ST: 0 }
+    const categoryCounts: Record<string, number> = {
+      General: 0,
+      OBC: 0,
+      SC: 0,
+      ST: 0,
+      Minority: 0
+    }
+
     officers.forEach((o) => {
-      const category = o.caste_category || 'General'
-      counts[category] = (counts[category] || 0) + 1
+      const str = (o.caste_category || '').toLowerCase()
+      let category = 'General'
+
+      if (str.includes('सामान्य') || str.includes('general')) category = 'General'
+      else if (str.includes('ओबीसी') || str.includes('पि0') || str.includes('obc')) category = 'OBC'
+      else if (str.includes('एससी') || str.includes('अनु0') || str.includes('sc')) category = 'SC'
+      else if (str.includes('एसटी') || str.includes('st')) category = 'ST'
+      else if (str.includes('मुस्लिम') || str.includes('सिख') || str.includes('अल्प') || str.includes('minority')) category = 'Minority'
+
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1
     })
 
-    return Object.entries(counts).map(([name, count]) => ({
+    return Object.entries(categoryCounts).map(([name, count]) => ({
       name,
       value: count,
-      color: CASTE_COLORS[name] || '#64748B'
+      color: CATEGORY_COLORS[name] || '#64748B'
     }))
-  }, [officers])
-
-  // 3. Retirement Timeline Area Chart Data
-  const retirementTimelineData = useMemo(() => {
-    const timeline = [
-      { range: '0-3 Mos', count: 0 },
-      { range: '3-6 Mos', count: 0 },
-      { range: '6-12 Mos', count: 0 },
-      { range: '1-2 Yrs', count: 0 },
-      { range: '2+ Yrs', count: 0 }
-    ]
-
-    officers.forEach((o) => {
-      const m = o.retirementMonthsRemaining
-      if (m >= 0 && m <= 3) timeline[0].count++
-      else if (m > 3 && m <= 6) timeline[1].count++
-      else if (m > 6 && m <= 12) timeline[2].count++
-      else if (m > 12 && m <= 24) timeline[3].count++
-      else timeline[4].count++
-    })
-
-    return timeline
-  }, [officers])
-
-  // 4. Monthly Joining Trend Data
-  const joiningTrendData = useMemo(() => {
-    return [
-      { month: 'Jan', count: 12 },
-      { month: 'Feb', count: 19 },
-      { month: 'Mar', count: 8 },
-      { month: 'Apr', count: 24 },
-      { month: 'May', count: 30 },
-      { month: 'Jun', count: 18 },
-      { month: 'Jul', count: 22 }
-    ]
-  }, [])
-
-  // 5. Gender Distribution Donut Chart Data
-  const genderData = useMemo(() => {
-    let male = 0
-    let female = 0
-    officers.forEach((o) => {
-      if (o.gender === 'Female') female++
-      else male++
-    })
-    return [
-      { name: 'Male Personnel', value: male, color: '#1E40AF' },
-      { name: 'Female Personnel', value: female, color: '#9333EA' }
-    ]
   }, [officers])
 
   const handleExportCSV = () => {
@@ -135,195 +86,107 @@ export function ChartsSection({ officers = [], tierName }: ChartsSectionProps) {
   }
 
   return (
-    <div ref={chartRef} className="space-y-4">
-      {/* Visual Analytics Navigation Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow-xs">
-            <BarChart3 className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-              Advanced Executive Force Analytics
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Multi-dimensional analysis across cadre strength, retirement timelines & gender representation
-            </p>
-          </div>
-        </div>
-
-        {/* Tab Switcher & Export */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1 text-xs font-bold">
-            <button
-              onClick={() => setActiveTab('cadre')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'cadre' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Cadre Strength
-            </button>
-            <button
-              onClick={() => setActiveTab('retirement')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'retirement' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Retirement Timeline
-            </button>
-            <button
-              onClick={() => setActiveTab('gender')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                activeTab === 'gender' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Gender & Caste
-            </button>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* LEFT: Core Rank Strength Distribution (2 Columns) */}
+      <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/60">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">Core Rank Strength Distribution</h3>
+              <p className="text-xs text-slate-500 font-medium">Cadre strength across district force</p>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Analytics</span>
+            <span>Export Data</span>
           </button>
+        </div>
+
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rankData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+              <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#E2E8F0',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.08)'
+                }}
+              />
+              <Bar dataKey="count" fill="#2563EB" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Main Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left 2-Column Main Chart */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-          {activeTab === 'cadre' && (
-            <>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Core Rank Strength Distribution</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Rank-wise total active personnel count ({tierName})</p>
-                </div>
-                <span className="text-[11px] font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                  {officers.length} Active Officers
-                </span>
-              </div>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={rankData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        borderColor: '#E2E8F0',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#1D4ED8" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'retirement' && (
-            <>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Retirement Horizon Area Analysis</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Personnel retiring across time horizons</p>
-                </div>
-                <span className="text-[11px] font-extrabold text-orange-800 bg-orange-50 px-3 py-1 rounded-full border border-orange-200">
-                  Pension Roster
-                </span>
-              </div>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={retirementTimelineData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis dataKey="range" tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="count" stroke="#EA580C" fill="#FFEDD5" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'gender' && (
-            <>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Monthly Force Joining Trend</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Recent personnel inductions & transfers in</p>
-                </div>
-                <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  Monthly Growth
-                </span>
-              </div>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={joiningTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis dataKey="month" tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} tickLine={false} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="count" stroke="#059669" strokeWidth={3} dot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
+      {/* RIGHT: Clean 5-Category Donut Chart (1 Column) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="flex items-center gap-2.5 mb-2 pb-3 border-b border-slate-100">
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+            <PieIcon className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900">Caste Category Ratio</h3>
+            <p className="text-xs text-slate-500 font-medium">Demographic ratio across 5 categories</p>
+          </div>
         </div>
 
-        {/* Right 1-Column Donut Ratio Chart */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
-                <PieIcon className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900">Gender & Caste Ratio</h3>
-                <p className="text-[11px] text-slate-500 font-medium">Demographic breakdown</p>
-              </div>
+        <div className="h-56 w-full relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={casteData}
+                cx="50%"
+                cy="45%"
+                innerRadius={45}
+                outerRadius={70}
+                paddingAngle={4}
+                dataKey="value"
+              >
+                {casteData.map((entry, index) => (
+                  <Cell key={`caste-cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#E2E8F0',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.08)'
+                }}
+              />
+              <Legend
+                verticalAlign="bottom"
+                height={36}
+                formatter={(value: string) => (
+                  <span className="text-slate-700 text-xs font-semibold ml-1">{value}</span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Dynamic Category Badges */}
+        <div className="mt-2 pt-3 border-t border-slate-100 grid grid-cols-3 gap-1.5 text-center text-xs">
+          {casteData.map((c) => (
+            <div key={c.name} className="px-1.5 py-1 rounded-lg bg-slate-50 border border-slate-200/60">
+              <span className="text-slate-500 font-medium block text-[10px]">{c.name}</span>
+              <strong className="text-slate-900 font-bold">{c.value}</strong>
             </div>
-          </div>
-
-          <div className="h-52 w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={activeTab === 'gender' ? genderData : casteData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {(activeTab === 'gender' ? genderData : casteData).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={(entry as any).color || '#2563EB'} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="mt-2 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-center text-xs">
-            {casteData.map((c) => (
-              <div key={c.name} className="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-slate-500 font-bold">{c.name}: </span>
-                <strong className="text-slate-900 font-extrabold">{c.value}</strong>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
     </div>

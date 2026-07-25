@@ -6,7 +6,6 @@ import { OfficerWithCalculated } from '@/types/police'
 import { 
   UserPlus, 
   FileSpreadsheet, 
-  Download, 
   Printer, 
   RefreshCw, 
   FileText,
@@ -31,7 +30,7 @@ export function QuickActionToolbar({
     setTimeout(() => {
       exportOfficersToExcel(officers)
       setExporting(false)
-    }, 500)
+    }, 400)
   }
 
   const handlePrint = () => {
@@ -42,59 +41,58 @@ export function QuickActionToolbar({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {/* 1. Add Personnel Button */}
+      {/* 1. Add Personnel Button (Primary) */}
       <button
         type="button"
         onClick={onOpenAddModal}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm transition-all active:scale-95"
+        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
         title="Add New Police Officer Record"
       >
-        <UserPlus className="w-4 h-4" />
+        <UserPlus className="w-3.5 h-3.5" />
         <span>Add Personnel</span>
       </button>
 
-      {/* 2. Export Excel Button */}
+      {/* 2. Export Excel Button (Subtle Outline) */}
       <button
         type="button"
         onClick={handleExportExcel}
         disabled={exporting}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm transition-all active:scale-95 disabled:opacity-60"
-        title="Export Entire Roster to Excel File"
+        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-colors disabled:opacity-60"
+        title="Export Roster to Excel"
       >
-        {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+        {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" /> : <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />}
         <span>Export Excel</span>
       </button>
 
-      {/* 3. Generate Report Button */}
+      {/* 3. Generate Report Button (Subtle Outline) */}
       <button
         type="button"
         onClick={handleExportExcel}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-sm transition-all active:scale-95"
-        title="Generate Executive Roster Summary"
+        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-colors"
+        title="Generate Executive Report"
       >
-        <FileText className="w-4 h-4" />
+        <FileText className="w-3.5 h-3.5 text-purple-600" />
         <span>Generate Report</span>
       </button>
 
-      {/* 4. Print Dashboard Button */}
+      {/* 4. Print Button */}
       <button
         type="button"
         onClick={handlePrint}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs shadow-sm transition-all active:scale-95"
-        title="Print Command Dashboard View"
+        className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs transition-colors"
+        title="Print View"
       >
-        <Printer className="w-4 h-4" />
-        <span>Print</span>
+        <Printer className="w-4 h-4 text-slate-600" />
       </button>
 
       {/* 5. Refresh Button */}
       <button
         type="button"
         onClick={onRefresh}
-        className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 shadow-sm transition-colors"
-        title="Refresh Data Roster"
+        className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs transition-colors"
+        title="Refresh Roster"
       >
-        <RefreshCw className="w-4 h-4" />
+        <RefreshCw className="w-4 h-4 text-blue-600" />
       </button>
     </div>
   )
