@@ -74,7 +74,45 @@ export async function addOfficer(officer: Partial<Officer>): Promise<{
 }
 
 /**
- * 3. transferOutOfficer
+ * 3. updateOfficerDuty
+ * Updates an officer's assigned duty / role_type and optional station posting in database.
+ */
+export async function updateOfficerDuty(
+  pno: string,
+  newDuty: string,
+  postingStation?: string
+): Promise<{
+  success: boolean
+  error: Error | null
+}> {
+  try {
+    const updatePayload: any = {
+      role_type: newDuty
+    }
+    if (postingStation && postingStation.trim()) {
+      updatePayload.current_posting = postingStation.trim()
+    }
+
+    const { error } = await (supabase as any)
+      .from('officers')
+      .update(updatePayload)
+      .eq('pno', pno)
+
+    if (error) {
+      logSupabaseError('updateOfficerDuty', error)
+      return { success: false, error: new Error(error.message) }
+    }
+
+    return { success: true, error: null }
+  } catch (err: unknown) {
+    const errorObj = err instanceof Error ? err : new Error(String(err))
+    console.error('Unexpected Exception [updateOfficerDuty]:', errorObj)
+    return { success: false, error: errorObj }
+  }
+}
+
+/**
+ * 4. transferOutOfficer
  */
 export async function transferOutOfficer(
   pno: string,
@@ -106,8 +144,7 @@ export async function transferOutOfficer(
 }
 
 /**
- * 4. suspendOfficer
- * Updates an officer's status to 'Suspended' and records suspension note in current_posting or role_type.
+ * 5. suspendOfficer
  */
 export async function suspendOfficer(
   pno: string,
@@ -138,7 +175,7 @@ export async function suspendOfficer(
 }
 
 /**
- * 5. updateSeatAssigned
+ * 6. updateSeatAssigned
  */
 export async function updateSeatAssigned(
   pno: string,
@@ -167,7 +204,7 @@ export async function updateSeatAssigned(
 }
 
 /**
- * 6. bulkDeleteOfficers
+ * 7. bulkDeleteOfficers
  */
 export async function bulkDeleteOfficers(pnos: string[]): Promise<{
   success: boolean
@@ -193,7 +230,7 @@ export async function bulkDeleteOfficers(pnos: string[]): Promise<{
 }
 
 /**
- * 7. getOfficerProfileWithHistory
+ * 8. getOfficerProfileWithHistory
  */
 export async function getOfficerProfileWithHistory(
   pno: string
@@ -239,7 +276,7 @@ export async function getOfficerProfileWithHistory(
 }
 
 /**
- * 8. getPostingApplications
+ * 9. getPostingApplications
  */
 export async function getPostingApplications(): Promise<{
   data: PostingApplication[] | null
@@ -265,7 +302,7 @@ export async function getPostingApplications(): Promise<{
 }
 
 /**
- * 9. getNodalOfficers
+ * 10. getNodalOfficers
  */
 export async function getNodalOfficers(): Promise<{
   data: NodalOfficer[] | null

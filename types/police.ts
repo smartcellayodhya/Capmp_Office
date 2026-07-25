@@ -16,6 +16,7 @@ export interface OfficerWithCalculated extends OfficerRow {
   coreRank: 'Inspector' | 'Sub-Inspector' | 'Head Constable' | 'Constable' | 'Computer Operator'
   gender: 'Male' | 'Female'
   specialDuty: string
+  smartDutyDisplay: string
 }
 
 export interface FilterState {

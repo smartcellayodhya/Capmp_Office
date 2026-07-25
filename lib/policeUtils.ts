@@ -9,39 +9,67 @@ export interface ParsedRank {
 }
 
 /**
- * 1. parsePoliceRank
- * Parses 28 raw police ranks (in Hindi/English) to extract Core Rank, Gender, Special Duty, and Suspension status.
+ * 1. getSmartDutyDisplay
+ * Determines exact field display role based on coreRank and specialDuty.
  */
-export function parsePoliceRank(rawRank: string = ''): ParsedRank {
+export function getSmartDutyDisplay(coreRank: string = '', specialDuty: string = ''): string {
+  const c = coreRank.toLowerCase()
+  const d = specialDuty.toLowerCase()
+
+  if (d.includes('thana prabhari') || d.includes('थाना प्रभारी') || d.includes('sho') || d.includes('so')) {
+    if (c.includes('inspector') && !c.includes('sub')) {
+      return 'SHO (प्रभारी निरीक्षक)'
+    }
+    return 'SO (थानाध्यक्ष)'
+  }
+
+  if (d.includes('chowki incharge') || d.includes('चौकी प्रभारी')) {
+    return 'Chowki Incharge (चौकी प्रभारी)'
+  }
+
+  return specialDuty || 'General Duty'
+}
+
+/**
+ * 2. parsePoliceRank
+ */
+export function parsePoliceRank(rawRank: string = '', roleType: string = ''): ParsedRank {
   const r = (rawRank || '').trim()
+  const role = (roleType || '').trim()
+  const combined = `${r} ${role}`.toLowerCase()
 
   // 1. Suspension Check ('नि0 ', 'निलंबित', 'suspended')
   const isSuspendedByRank = r.startsWith('नि0 ') || r.includes('निलंबित') || r.toLowerCase().includes('suspended')
 
-  // Clean rank string without suspension prefix for core rank matching
+  // Clean rank string
   const cleanRankStr = r.replace(/^नि0\s+/, '').trim()
 
-  // 2. Gender Extraction ('महिला', 'म0', 'म0 ')
+  // 2. Gender Extraction ('महिला', 'म0')
   let gender: 'Male' | 'Female' = 'Male'
   if (r.includes('महिला') || r.includes('म0') || r.toLowerCase().includes('female') || r.toLowerCase().includes('w/')) {
     gender = 'Female'
   }
 
-  // 3. Special Duty Extraction
+  // 3. Special Duty & Field Leadership Extraction
   let specialDuty = 'General Duty'
-  if (r.includes('सीसीटीएनएस') || r.toUpperCase().includes('CCTNS')) {
+
+  if (combined.includes('थाना प्रभारी') || combined.includes('प्रभारी निरीक्षक') || combined.includes('थानाध्यक्ष') || combined.includes('thana prabhari') || combined.includes('sho') || combined.includes('so')) {
+    specialDuty = 'Thana Prabhari'
+  } else if (combined.includes('चौकी प्रभारी') || combined.includes('chowki incharge')) {
+    specialDuty = 'Chowki Incharge'
+  } else if (combined.includes('सीसीटीएनएस') || combined.includes('cctns')) {
     specialDuty = 'CCTNS'
-  } else if (r.includes('मालखाना') || r.toLowerCase().includes('malkhana')) {
+  } else if (combined.includes('मालखाना') || combined.includes('malkhana')) {
     specialDuty = 'Maalkhana Incharge'
-  } else if (r.includes('का0मु0') || r.includes('मुन्शी') || r.includes('मुंशी')) {
+  } else if (combined.includes('का0मु0') || combined.includes('मुन्शी') || combined.includes('मुंशी')) {
     specialDuty = 'Munshi'
-  } else if (r.includes('हे0मो0') || r.includes('मोहर्रिर')) {
+  } else if (combined.includes('हे0मो0') || combined.includes('मोहर्रिर')) {
     specialDuty = 'Head Moharir'
-  } else if (r.includes('चालक') || r.includes('चाल0') || r.toLowerCase().includes('driver')) {
+  } else if (combined.includes('चालक') || combined.includes('चाल0') || combined.includes('driver')) {
     specialDuty = 'Driver'
-  } else if (r.includes('एलआईयू') || r.toUpperCase().includes('LIU')) {
+  } else if (combined.includes('एलआईयू') || combined.includes('liu')) {
     specialDuty = 'LIU'
-  } else if (r.includes('यातायात') || r.includes('ट्रैफिक') || r.toUpperCase().includes('TRAFFIC') || r.includes('TI')) {
+  } else if (combined.includes('यातायात') || combined.includes('ट्रैफिक') || combined.includes('traffic') || combined.includes('ti')) {
     specialDuty = 'Traffic'
   }
 
@@ -119,11 +147,13 @@ export function getRetirementInfo(dob?: string | null) {
 }
 
 export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: string): OfficerWithCalculated {
-  const parsed = parsePoliceRank(officer.rank || '')
+  const parsed = parsePoliceRank(officer.rank || '', officer.role_type || '')
 
   const effectiveStatus = (officer.status === 'Suspended' || parsed.isSuspendedByRank) 
     ? 'Suspended' 
     : (officer.status || 'Active')
+
+  const smartDutyDisplay = getSmartDutyDisplay(parsed.coreRank, parsed.specialDuty)
 
   const safeOfficer: OfficerRow = {
     id: officer.id || 'N/A',
@@ -156,6 +186,7 @@ export function enrichOfficerData(officer: Partial<OfficerRow>, postingDate?: st
     coreRank: parsed.coreRank,
     gender: parsed.gender,
     specialDuty: parsed.specialDuty,
+    smartDutyDisplay,
     ...retInfo
   }
 }
@@ -167,8 +198,8 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     'Officer Name': o.name || 'Unknown',
     'Core Rank': o.coreRank || 'N/A',
     'Raw Rank': o.rank || 'N/A',
+    'Field Leadership Duty': o.smartDutyDisplay || 'General Duty',
     'Gender': o.gender || 'Male',
-    'Special Duty Tag': o.specialDuty || 'General Duty',
     'Tier': o.officer_tier || 'N/A',
     'Role Type': o.role_type || 'N/A',
     'Caste Category': o.caste_category || 'N/A',
@@ -189,8 +220,8 @@ export function exportOfficersToExcel(officers: OfficerWithCalculated[], filenam
     { wch: 24 },
     { wch: 18 },
     { wch: 20 },
+    { wch: 26 },
     { wch: 10 },
-    { wch: 20 },
     { wch: 15 },
     { wch: 18 },
     { wch: 14 },

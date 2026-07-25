@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Clock,
   Briefcase,
-  UserX
+  UserX,
+  MapPin
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -88,6 +89,17 @@ export default function LiveDashboardPage() {
   const overstayCount = activeOfficers.filter((o) => o.isOverstay && o.status !== 'Suspended').length
   const retiringSoonCount = activeOfficers.filter((o) => o.isRetiringSoon).length
 
+  // Field Leadership Counts (Requirement 3)
+  const activeThanaPrabhariCount = activeOfficers.filter((o) => {
+    const d = (o.smartDutyDisplay || o.specialDuty || '').toLowerCase()
+    return (d.includes('sho') || d.includes('so') || d.includes('thana prabhari')) && o.status !== 'Suspended'
+  }).length
+
+  const activeChowkiInchargeCount = activeOfficers.filter((o) => {
+    const d = (o.smartDutyDisplay || o.specialDuty || '').toLowerCase()
+    return d.includes('chowki incharge') && o.status !== 'Suspended'
+  }).length
+
   return (
     <div className="space-y-6">
       {/* Executive Command Header */}
@@ -97,7 +109,7 @@ export default function LiveDashboardPage() {
             📊 Executive Analytics Command Dashboard
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            District Force Analytics, Core Rank Distribution & Automated Alert Engine • Camp Office, SSP Ayodhya
+            District Force Analytics, Field Leadership (SHO/SO/Chowki Incharges) & Automated Alert Engine • Camp Office, SSP Ayodhya
           </p>
         </div>
         <button
@@ -114,7 +126,7 @@ export default function LiveDashboardPage() {
         <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <p className="text-sm font-bold text-slate-900">Loading Personnel Records...</p>
-          <p className="text-xs text-slate-500 font-medium">Aggregating Force Analytics & Cadre Strength</p>
+          <p className="text-xs text-slate-500 font-medium">Aggregating Field Leadership & Force Metrics</p>
         </div>
       ) : errorMessage ? (
         <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center gap-3 shadow-sm">
@@ -132,7 +144,7 @@ export default function LiveDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Summary Executive Cards Grid including Red Suspended Card */}
+          {/* Main Executive Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Card 1: Total Active Force */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -191,7 +203,7 @@ export default function LiveDashboardPage() {
               </p>
             </Link>
 
-            {/* Card 4: STRIKING RED CARD - Suspended Personnel */}
+            {/* Card 4: Red Suspended Card */}
             <div className="bg-gradient-to-br from-rose-50 to-red-100/60 border border-rose-300 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-600 text-white shadow-sm">
@@ -203,7 +215,7 @@ export default function LiveDashboardPage() {
               </div>
               <h3 className="text-3xl font-black text-rose-950 tracking-tight">{suspendedOfficers.length}</h3>
               <p className="text-xs font-extrabold text-rose-900 mt-1">Suspended Personnel</p>
-              <p className="text-[11px] text-rose-700 mt-1 font-bold">Disciplinary Action Roster</p>
+              <p className="text-[11px] text-rose-700 mt-1 font-bold">Disciplinary Roster</p>
             </div>
 
             {/* Card 5: Pending Transfer Requests */}
@@ -226,6 +238,51 @@ export default function LiveDashboardPage() {
                 <ChevronRight className="w-3.5 h-3.5 text-indigo-600" />
               </p>
             </Link>
+          </div>
+
+          {/* Prominent Field Leadership Metric Cards (Requirement 3) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Field Leadership Card 1: Active Thana Prabhari (SHO / SO) */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-white border border-amber-200/90 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider">
+                  Police Station Chiefs
+                </span>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight mt-2">
+                  {activeThanaPrabhariCount} Active
+                </h3>
+                <p className="text-xs font-extrabold text-slate-800 mt-0.5">
+                  Active Thana Prabhari (SHO / SO)
+                </p>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">
+                  Inspectors (SHO) & Sub-Inspectors (SO) Heading Police Stations
+                </p>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+                <Building2 className="w-7 h-7" />
+              </div>
+            </div>
+
+            {/* Field Leadership Card 2: Active Chowki Incharges */}
+            <div className="bg-gradient-to-r from-purple-500/10 via-purple-400/5 to-white border border-purple-200/90 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-300 uppercase tracking-wider">
+                  Outpost Commanders
+                </span>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight mt-2">
+                  {activeChowkiInchargeCount} Active
+                </h3>
+                <p className="text-xs font-extrabold text-slate-800 mt-0.5">
+                  Active Chowki Incharges (चौकी प्रभारी)
+                </p>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">
+                  Sub-Inspectors (SI) Heading Sector Outposts
+                </p>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+                <MapPin className="w-7 h-7" />
+              </div>
+            </div>
           </div>
 
           {/* Automated Tenure & Retirement Alert Engine */}
@@ -251,7 +308,7 @@ export default function LiveDashboardPage() {
             </div>
           </div>
 
-          {/* High-Level Recharts Analytics Visualizations (Strictly 5 Core Ranks) */}
+          {/* High-Level Recharts Analytics Visualizations */}
           <ChartsSection officers={activeOfficers} tierName="Entire District Force" />
         </>
       )}

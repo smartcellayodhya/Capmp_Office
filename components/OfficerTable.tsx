@@ -5,6 +5,7 @@ import { OfficerWithCalculated } from '@/types/police'
 import { TimelineModal } from './TimelineModal'
 import { TransferOutModal } from './TransferOutModal'
 import { SuspendModal } from './SuspendModal'
+import { AssignDutyModal } from './AssignDutyModal'
 import { 
   ShieldAlert, 
   AlertTriangle, 
@@ -14,7 +15,8 @@ import {
   Trash2,
   UserX,
   ShieldCheck,
-  Tag
+  Tag,
+  Briefcase
 } from 'lucide-react'
 
 interface OfficerTableProps {
@@ -27,6 +29,7 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
   const [selectedOfficer, setSelectedOfficer] = useState<OfficerWithCalculated | null>(null)
   const [transferOfficer, setTransferOfficer] = useState<OfficerWithCalculated | null>(null)
   const [suspendTarget, setSuspendTarget] = useState<OfficerWithCalculated | null>(null)
+  const [assignDutyTarget, setAssignDutyTarget] = useState<OfficerWithCalculated | null>(null)
 
   // Status Filter State: 'Active' | 'Suspended' | 'Transferred' | 'ALL'
   const [statusFilter, setStatusFilter] = useState<'Active' | 'Suspended' | 'Transferred' | 'ALL'>('Active')
@@ -40,25 +43,26 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
   })
 
   // Helper for Special Duty pill color styling
-  const getSpecialDutyBadge = (duty: string = 'General Duty') => {
-    switch (duty) {
-      case 'CCTNS':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'Maalkhana Incharge':
-        return 'bg-amber-100 text-amber-900 border-amber-300'
-      case 'Munshi':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'Head Moharir':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200'
-      case 'Driver':
-        return 'bg-teal-100 text-teal-800 border-teal-200'
-      case 'LIU':
-        return 'bg-rose-100 text-rose-800 border-rose-200'
-      case 'Traffic':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-200'
+  const getSpecialDutyBadge = (dutyDisplay: string = 'General Duty') => {
+    if (dutyDisplay.includes('SHO')) {
+      return 'bg-amber-100 text-amber-900 border-amber-300 font-black shadow-2xs'
     }
+    if (dutyDisplay.includes('SO')) {
+      return 'bg-blue-100 text-blue-900 border-blue-300 font-black shadow-2xs'
+    }
+    if (dutyDisplay.includes('Chowki Incharge')) {
+      return 'bg-purple-100 text-purple-900 border-purple-300 font-black shadow-2xs'
+    }
+    if (dutyDisplay.includes('CCTNS')) {
+      return 'bg-indigo-100 text-indigo-800 border-indigo-200 font-bold'
+    }
+    if (dutyDisplay.includes('Maalkhana')) {
+      return 'bg-amber-50 text-amber-900 border-amber-200 font-bold'
+    }
+    if (dutyDisplay.includes('Munshi')) {
+      return 'bg-blue-50 text-blue-800 border-blue-200 font-bold'
+    }
+    return 'bg-slate-100 text-slate-700 border-slate-200 font-medium'
   }
 
   return (
@@ -70,7 +74,7 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
             <Award className="w-4 h-4 text-blue-600" /> Cadre Personnel Roster
           </h3>
           <p className="text-[11px] text-slate-500 font-medium">
-            Inspect core ranks, special duties, gender, and issue disciplinary suspensions
+            Inspect smart field roles (SHO / SO / Chowki Incharge), assign duties, and manage transfers
           </p>
         </div>
 
@@ -133,9 +137,9 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
             <tr className="bg-slate-100/90 text-slate-700 uppercase tracking-wider font-extrabold border-b border-slate-200">
               <th className="py-3.5 px-4">PNO & Name</th>
               <th className="py-3.5 px-4">Core Rank</th>
-              <th className="py-3.5 px-4">Gender</th>
-              <th className="py-3.5 px-4">Special Duty Tag</th>
+              <th className="py-3.5 px-4">Field Duty Role</th>
               <th className="py-3.5 px-4">Current Posting</th>
+              <th className="py-3.5 px-4">Gender</th>
               <th className="py-3.5 px-4">Service Status</th>
               <th className="py-3.5 px-4 text-right">Actions</th>
             </tr>
@@ -174,28 +178,15 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
                     </div>
                   </td>
 
-                  {/* Gender */}
+                  {/* Smart Display Field Duty Role (Pill Badge) */}
                   <td className="py-3.5 px-4">
                     <span
-                      className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
-                        o.gender === 'Female'
-                          ? 'bg-purple-100 text-purple-900 border border-purple-300'
-                          : 'bg-slate-100 text-slate-800 border border-slate-200'
-                      }`}
-                    >
-                      {o.gender || 'Male'}
-                    </span>
-                  </td>
-
-                  {/* Special Duty Tag (Small Colored Pill) */}
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getSpecialDutyBadge(
-                        o.specialDuty
+                      className={`inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full border ${getSpecialDutyBadge(
+                        o.smartDutyDisplay || o.specialDuty
                       )}`}
                     >
-                      <Tag className="w-2.5 h-2.5 opacity-70" />
-                      {o.specialDuty || 'General Duty'}
+                      <Tag className="w-2.5 h-2.5 opacity-80" />
+                      {o.smartDutyDisplay || o.specialDuty || 'General Duty'}
                     </span>
                   </td>
 
@@ -212,6 +203,19 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
                         </span>
                       )}
                     </div>
+                  </td>
+
+                  {/* Gender */}
+                  <td className="py-3.5 px-4">
+                    <span
+                      className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                        o.gender === 'Female'
+                          ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                          : 'bg-slate-100 text-slate-800 border border-slate-200'
+                      }`}
+                    >
+                      {o.gender || 'Male'}
+                    </span>
                   </td>
 
                   {/* Service Status */}
@@ -234,6 +238,19 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
                   {/* Actions */}
                   <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
+                      {/* Assign Duty Action Button */}
+                      {o.status !== 'Transferred' && (
+                        <button
+                          type="button"
+                          onClick={() => setAssignDutyTarget(o)}
+                          className="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
+                          title="Assign Smart Duty / Posting"
+                        >
+                          <Briefcase className="w-3 h-3 text-blue-700" />
+                          <span>Assign Duty</span>
+                        </button>
+                      )}
+
                       {/* Suspend Action Button */}
                       {o.status !== 'Suspended' && o.status !== 'Transferred' && (
                         <button
@@ -314,6 +331,17 @@ export function OfficerTable({ officers = [], onRefresh, onDeleteOfficer }: Offi
         <SuspendModal
           officer={suspendTarget}
           onClose={() => setSuspendTarget(null)}
+          onSuccess={() => {
+            if (onRefresh) onRefresh()
+          }}
+        />
+      )}
+
+      {/* Assign Duty Modal */}
+      {assignDutyTarget && (
+        <AssignDutyModal
+          officer={assignDutyTarget}
+          onClose={() => setAssignDutyTarget(null)}
           onSuccess={() => {
             if (onRefresh) onRefresh()
           }}
