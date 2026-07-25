@@ -3,12 +3,35 @@
 import { useState } from 'react'
 import { addOfficer } from '@/services/database'
 import { OfficerTier, CasteCategory, OfficerStatus } from '@/types/supabase'
-import { X, UserPlus, Shield, Loader2, Check } from 'lucide-react'
+import { X, UserPlus, Loader2, Check } from 'lucide-react'
 
 interface AddOfficerModalProps {
-  defaultTier?: OfficerTier
+  defaultTier?: OfficerTier | string
   onClose: () => void
   onSuccess: () => void
+}
+
+const CADRE_RANKS: Record<string, string[]> = {
+  Gazetted: [
+    'Addl. SP (अपर पुलिस अधीक्षक)',
+    'Dy. SP / CO (पुलिस उपाधीक्षक / क्षेत्राधिकारी)',
+    'SP / SSP (पुलिस अधीक्षक)',
+    'IPS / PPS Cadre Leader'
+  ],
+  'Non-Gazetted': [
+    'Sub-Inspector (उप-निरीक्षक)',
+    'Inspector (निरीक्षक)',
+    'Head Constable (मुख्य आरक्षी)',
+    'Constable (आरक्षी)',
+    'Computer Operator (कंप्यूटर ऑपरेटर)'
+  ],
+  'Camp Staff': [
+    'Camp Office Staff',
+    'Head Clerk (प्रधान लिपिक)',
+    'Senior Clerk (वरिष्ठ लिपिक)',
+    'Junior Clerk (कनिष्ठ लिपिक)',
+    'Steno / PA (आशुलिपिक)'
+  ]
 }
 
 export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSuccess }: AddOfficerModalProps) {
@@ -16,13 +39,20 @@ export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSucce
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
+  // Map initial default tier cleanly
+  const initialTier: OfficerTier = 
+    defaultTier === 'Gazetted' ? 'Gazetted' :
+    defaultTier === 'Camp Staff' || defaultTier === 'Staff' ? 'Camp Staff' : 'Non-Gazetted'
+
+  const initialRankList = CADRE_RANKS[initialTier] || CADRE_RANKS['Non-Gazetted']
+
   const [formData, setFormData] = useState({
     pno: '',
     name: '',
-    rank: 'Sub-Inspector (SI)',
-    officer_tier: defaultTier as OfficerTier,
+    rank: initialRankList[0],
+    officer_tier: initialTier as OfficerTier,
     current_posting: 'Camp Office Ayodhya',
-    role_type: 'Staff',
+    role_type: 'General Duty',
     caste_category: 'General' as CasteCategory,
     dob: '1988-01-01',
     joining_date: '2018-01-01',
@@ -30,6 +60,19 @@ export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSucce
     mobile_number: '',
     seat_assigned: 'Desk 1 - Main Desk'
   })
+
+  // Dynamic Rank Options list based on selected Cadre/Tier
+  const currentRankOptions = CADRE_RANKS[formData.officer_tier] || CADRE_RANKS['Non-Gazetted']
+
+  // Handle Cadre/Tier Change & Auto-Select First Rank
+  const handleTierChange = (newTier: OfficerTier) => {
+    const validRanks = CADRE_RANKS[newTier] || CADRE_RANKS['Non-Gazetted']
+    setFormData((prev) => ({
+      ...prev,
+      officer_tier: newTier,
+      rank: validRanks[0]
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,7 +93,7 @@ export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSucce
         setTimeout(() => {
           onSuccess()
           onClose()
-        }, 1000)
+        }, 800)
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to add personnel record.')
@@ -73,7 +116,9 @@ export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSucce
             </div>
             <div>
               <h3 className="text-base font-bold text-white">Add New Personnel Record</h3>
-              <p className="text-xs text-slate-300">Ayodhya Police Camp Office Roster</p>
+              <p className="text-xs text-slate-300">
+                Cadre: <strong className="text-amber-300">{formData.officer_tier}</strong>
+              </p>
             </div>
           </div>
           <button
@@ -123,28 +168,33 @@ export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSucce
             </div>
           </div>
 
+          {/* DYNAMIC CADRE TO RANK DEPENDENT DROPDOWN */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Officer Cadre/Tier</label>
+              <label className="block text-slate-700 font-bold mb-1">Officer Cadre / Tier *</label>
               <select
                 value={formData.officer_tier}
-                onChange={(e) => setFormData({ ...formData, officer_tier: e.target.value as OfficerTier })}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
+                onChange={(e) => handleTierChange(e.target.value as OfficerTier)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 font-bold"
               >
-                <option value="Gazetted">Gazetted (GOs)</option>
+                <option value="Gazetted">Gazetted Officers (GOs)</option>
                 <option value="Non-Gazetted">Non-Gazetted (NGOs)</option>
                 <option value="Camp Staff">Camp Office Staff</option>
               </select>
             </div>
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Rank</label>
-              <input
-                type="text"
-                placeholder="e.g. Sub-Inspector / Inspector"
+              <label className="block text-slate-700 font-bold mb-1">Specific Rank *</label>
+              <select
                 value={formData.rank}
                 onChange={(e) => setFormData({ ...formData, rank: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
-              />
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 font-bold"
+              >
+                {currentRankOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -159,9 +209,10 @@ export function AddOfficerModal({ defaultTier = 'Non-Gazetted', onClose, onSucce
               />
             </div>
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Role / Assignment</label>
+              <label className="block text-slate-700 font-bold mb-1">Special Field Duty / Role</label>
               <input
                 type="text"
+                placeholder="e.g. Thana Prabhari, CCTNS, Munshi"
                 value={formData.role_type}
                 onChange={(e) => setFormData({ ...formData, role_type: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
