@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -12,12 +12,20 @@ import {
   Award,
   Camera,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Menu,
+  X
 } from 'lucide-react'
 
 export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   const navItems = [
     {
@@ -65,87 +73,122 @@ export function Sidebar() {
   ]
 
   return (
-    <aside
-      className={`bg-white border-r border-slate-200 min-h-screen flex flex-col justify-between shrink-0 shadow-xs transition-all duration-300 z-30 sticky top-0 ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
-    >
-      <div>
-        {/* Circle UP Police Logo & Collapse Toggle */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden p-0.5 shadow-2xs">
-              <img
-                src="/up-police-logo.png"
-                alt="Uttar Pradesh Police Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {!collapsed && (
-              <div className="truncate">
-                <h1 className="text-base font-extrabold text-slate-900 tracking-tight leading-tight truncate">
-                  Ayodhya Police
-                </h1>
-                <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mt-0.5">
-                  CAMP OFFICE
-                </p>
+    <>
+      {/* Mobile Top Hamburger Bar (< md screens) */}
+      <div className="md:hidden fixed top-3 left-3 z-50">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2.5 rounded-xl bg-slate-900 text-white shadow-xl border border-slate-700 flex items-center justify-center"
+          title="Toggle Mobile Menu"
+        >
+          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Mobile Backdrop Overlay */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 animate-fadeIn"
+        />
+      )}
+
+      {/* Sidebar Container */}
+      <aside
+        className={`bg-white border-r border-slate-200 min-h-screen flex flex-col justify-between shrink-0 shadow-xs transition-all duration-300 z-40 
+          md:sticky md:top-0 fixed top-0 left-0 bottom-0
+          ${mobileOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0'}
+          ${collapsed ? 'md:w-20' : 'md:w-64'}
+        `}
+      >
+        <div>
+          {/* Circle UP Police Logo & Collapse Toggle */}
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden p-0.5 shadow-2xs">
+                <img
+                  src="/up-police-logo.png"
+                  alt="Uttar Pradesh Police Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
-            )}
+              {(!collapsed || mobileOpen) && (
+                <div className="truncate">
+                  <h1 className="text-base font-extrabold text-slate-900 tracking-tight leading-tight truncate">
+                    Ayodhya Police
+                  </h1>
+                  <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mt-0.5">
+                    CAMP OFFICE
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Collapse button for Desktop */}
+            <button
+              type="button"
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden md:block p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition-colors"
+              title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+
+            {/* Close button for Mobile */}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden p-1.5 rounded-xl bg-slate-100 text-slate-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition-colors"
-            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-          >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
-        </div>
+          {/* Command Navigation Menu */}
+          <div className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-80px)]">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || (pathname === '/' && item.href === '/dashboard/live')
+              const Icon = item.icon
 
-        {/* Command Navigation Menu */}
-        <div className="p-3 space-y-1.5">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (pathname === '/' && item.href === '/dashboard/live')
-            const Icon = item.icon
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={collapsed ? item.name : undefined}
-                className={`flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Icon
-                    className={`w-4 h-4 shrink-0 transition-colors ${
-                      isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'
-                    }`}
-                  />
-                  {!collapsed && <span className="truncate">{item.name}</span>}
-                </div>
-
-                {!collapsed && (
-                  <div className="flex items-center gap-1">
-                    {item.badge && (
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
-                        isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}>
-                        {item.badge}
-                      </span>
-                    )}
-                    {isActive && <ChevronRight className="w-3.5 h-3.5 text-white opacity-80" />}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={collapsed ? item.name : undefined}
+                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon
+                      className={`w-4.5 h-4.5 shrink-0 transition-colors ${
+                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'
+                      }`}
+                    />
+                    {(!collapsed || mobileOpen) && <span className="truncate">{item.name}</span>}
                   </div>
-                )}
-              </Link>
-            )
-          })}
+
+                  {(!collapsed || mobileOpen) && (
+                    <div className="flex items-center gap-1">
+                      {item.badge && (
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                          isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                      {isActive && <ChevronRight className="w-3.5 h-3.5 text-white opacity-80" />}
+                    </div>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }
