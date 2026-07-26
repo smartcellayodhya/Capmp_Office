@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Tesseract from 'tesseract.js'
-import { convertKrutiDevToUnicode, sanitizeHindiOcrText, extractSmartHindiSubjectSentence } from '@/lib/krutiDevConverter'
+import { processDualFontHindiText, extractSmartHindiSubjectSentence } from '@/lib/krutiDevConverter'
 import { 
   X, 
   Camera, 
@@ -75,7 +75,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
   const [snapshot, setSnapshot] = useState<string | null>(null)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
   const [rawOcrText, setRawOcrText] = useState<string>('')
-  const [fontConverted, setFontConverted] = useState(false)
+  const [detectedFontType, setDetectedFontType] = useState<'Mangal Unicode' | 'KrutiDev 010'>('Mangal Unicode')
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -160,10 +160,9 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
     }
   }, [])
 
-  // RUN REAL TESSERACT.JS OCR EXTRACTION + HINDI SANITIZER & SUBJECT EXTRACTOR
+  // DUAL FONT (MANGAL & KRUTIDEV) DYNAMIC OCR ENGINE
   const runRealOCR = async (imageDataUrl: string) => {
     setIsScanning(true)
-    setFontConverted(false)
     setOcrProgress('Reading Paper Document Text (OCR)...')
 
     try {
@@ -171,22 +170,18 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
         logger: (m) => {
           if (m.status === 'recognizing text') {
             const pct = Math.floor(m.progress * 100)
-            setOcrProgress(`Reading Hindi Devanagari Words (${pct}%)...`)
+            setOcrProgress(`Reading Mangal / KrutiDev Hindi Words (${pct}%)...`)
           }
         }
       })
 
       const rawExtracted = (result.data.text || '').trim()
 
-      // Convert legacy KrutiDev & Sanitize noise characters
-      const convertedText = convertKrutiDevToUnicode(rawExtracted)
-      const cleanSanitizedText = sanitizeHindiOcrText(convertedText)
-
+      // Process Dual Font (Auto-detects Mangal Devanagari vs KrutiDev 010)
+      const fontResult = processDualFontHindiText(rawExtracted)
+      const cleanSanitizedText = fontResult.cleanText
+      setDetectedFontType(fontResult.detectedFont)
       setRawOcrText(cleanSanitizedText)
-
-      if (cleanSanitizedText !== rawExtracted) {
-        setFontConverted(true)
-      }
 
       // Generate unique Daak Number
       const randomNum = Math.floor(1000 + Math.random() * 9000)
@@ -336,9 +331,9 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                Digital Daak Register <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] bg-blue-600 font-extrabold text-white">Subject Auto-Extractor</span>
+                Digital Daak Register <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] bg-blue-600 font-extrabold text-white">Dual Font AI Engine</span>
               </h3>
-              <p className="text-[11px] sm:text-xs text-slate-300">Extracts Official Hindi Subject Sentences ("के संबंध में")</p>
+              <p className="text-[11px] sm:text-xs text-slate-300">Auto-Detects Mangal Unicode & KrutiDev 010 Fonts</p>
             </div>
           </div>
           <button
@@ -438,7 +433,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                     <Camera className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                   </div>
                   <div>
-                    <p className="font-bold text-slate-200 text-xs">Mobile Document Camera Scanner Ready</p>
+                    <p className="font-bold text-slate-200 text-xs">Mangal & KrutiDev Hindi Document Scanner</p>
                     <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">Tap "Open Camera" or "Upload Photo" to scan document from your phone!</p>
                   </div>
                 </div>
@@ -451,7 +446,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                   <span className="text-xs font-extrabold text-white bg-blue-600/90 px-3.5 py-1.5 rounded-full border border-blue-400 shadow-md">
                     {ocrProgress}
                   </span>
-                  <p className="text-[10px] text-blue-200">Extracting Official Subject Sentences ("के संबंध में")...</p>
+                  <p className="text-[10px] text-blue-200">Auto-Detecting Mangal Unicode & KrutiDev Hindi...</p>
                 </div>
               )}
             </div>
@@ -464,7 +459,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
               className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Capture & Extract Subject Sentence</span>
+              <span>Capture & Scan Document (OCR)</span>
             </button>
           </div>
 
@@ -497,7 +492,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
             <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
               <label className="block text-slate-700 font-bold">Official Extracted Subject / Summary *</label>
               <span className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-300">
-                <Languages className="w-3 h-3 text-emerald-600" /> Official Subject ("के संबंध में") Extracted
+                <Languages className="w-3 h-3 text-emerald-600" /> Font: {detectedFontType} Active
               </span>
             </div>
             <textarea
@@ -513,7 +508,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
           {/* RAW OCR DETECTED TEXT PREVIEW */}
           {rawOcrText && (
             <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-[10px] text-slate-700 space-y-1">
-              <span className="font-bold uppercase tracking-wider text-slate-500 block">Recognized Words from Photo:</span>
+              <span className="font-bold uppercase tracking-wider text-slate-500 block">Recognized Words ({detectedFontType}):</span>
               <p className="max-h-16 overflow-y-auto font-medium text-slate-900 leading-relaxed">{rawOcrText}</p>
             </div>
           )}
