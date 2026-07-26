@@ -13,7 +13,8 @@ import {
   BrainCircuit, 
   AlertCircle,
   VideoOff,
-  Upload
+  Edit3,
+  List
 } from 'lucide-react'
 
 interface DaakEntry {
@@ -57,7 +58,6 @@ function getAiLearnedDestination(text: string): { office: string; confidence: nu
   return { office: 'रीडर शाखा (Reader Post)', confidence: 92, category: 'Executive Correspondence' }
 }
 
-// Sample OCR Scanned Text Templates for Simulation
 const SAMPLE_OCR_TEMPLATES = [
   {
     sender: 'कार्यालय पुलिस अधीक्षक, नगर अयोध्या',
@@ -95,10 +95,13 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
   const [daakNumber, setDaakNumber] = useState('')
   const [senderDept, setSenderDept] = useState('')
   const [summary, setSummary] = useState('')
+  
+  // Destination Office State
   const [targetOffice, setTargetOffice] = useState('स्थापना शाखा (Establishment Wing)')
   const [aiSuggestedOffice, setAiSuggestedOffice] = useState('स्थापना शाखा (Establishment Wing)')
   const [aiConfidence, setAiConfidence] = useState(98)
   const [isAiOverridden, setIsAiOverridden] = useState(false)
+  const [isCustomMode, setIsCustomMode] = useState(false)
 
   // Auto-generate initial Daak Number
   useEffect(() => {
@@ -144,7 +147,6 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
   const handleCaptureAndScan = () => {
     setIsScanning(true)
 
-    // Capture snapshot frame if video is live
     if (videoRef.current && canvasRef.current && isCameraActive) {
       const video = videoRef.current
       const canvas = canvasRef.current
@@ -157,12 +159,9 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
       }
     }
 
-    // Stop camera stream after capture
     stopCamera()
 
-    // Simulate AI OCR Processing Delay (800ms)
     setTimeout(() => {
-      // Select sample template
       const template = SAMPLE_OCR_TEMPLATES[Math.floor(Math.random() * SAMPLE_OCR_TEMPLATES.length)]
       
       const randomNum = Math.floor(1000 + Math.random() * 9000)
@@ -170,30 +169,36 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
       setSenderDept(template.sender)
       setSummary(template.summary)
 
-      // Run AI Destination Engine
       const aiRoute = getAiLearnedDestination(template.rawText)
       setAiSuggestedOffice(aiRoute.office)
       setTargetOffice(aiRoute.office)
       setAiConfidence(aiRoute.confidence)
       setIsAiOverridden(false)
+      setIsCustomMode(false)
 
       setIsScanning(false)
     }, 800)
   }
 
-  // Handle Manual Target Office Override (AI Learning Simulation)
-  const handleTargetChange = (val: string) => {
-    setTargetOffice(val)
-    if (val !== aiSuggestedOffice) {
+  const handleTargetDropdownChange = (val: string) => {
+    if (val === 'CUSTOM_MANUAL_TYPE') {
+      setIsCustomMode(true)
+      setTargetOffice('')
       setIsAiOverridden(true)
     } else {
-      setIsAiOverridden(false)
+      setIsCustomMode(false)
+      setTargetOffice(val)
+      if (val !== aiSuggestedOffice) {
+        setIsAiOverridden(true)
+      } else {
+        setIsAiOverridden(false)
+      }
     }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!daakNumber || !summary) return
+    if (!daakNumber || !summary || !targetOffice) return
 
     const newRecord: DaakEntry = {
       id: `daak-${Date.now()}`,
@@ -228,7 +233,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 Digital Daak Register <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-600 font-extrabold text-white">AI Scanner</span>
               </h3>
-              <p className="text-xs text-slate-300">Live Camera Document Scanner & Smart Destination Router</p>
+              <p className="text-xs text-slate-300">Live Camera Document Scanner & Custom Destination Router</p>
             </div>
           </div>
           <button
@@ -240,7 +245,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
-          {/* CAMERA VIEWFINDER SECTION (Feature 1) */}
+          {/* CAMERA VIEWFINDER SECTION */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -308,7 +313,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
               )}
             </div>
 
-            {/* CAPTURE BUTTON (Feature 1 & 2) */}
+            {/* CAPTURE BUTTON */}
             <button
               type="button"
               disabled={isScanning}
@@ -344,7 +349,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
             </div>
           </div>
 
-          {/* AI SUMMARY TEXTAREA (Feature 2) */}
+          {/* AI SUMMARY TEXTAREA */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-slate-700 font-bold">AI Extracted Summary / Subject *</label>
@@ -362,11 +367,11 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
             />
           </div>
 
-          {/* SMART DESTINATION ROUTING (Feature 3) */}
-          <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2">
+          {/* SMART DESTINATION ROUTING & CUSTOM MANUAL TYPING */}
+          <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <BrainCircuit className="w-4 h-4 text-blue-600" /> AI Learned Destination Routing
+                <BrainCircuit className="w-4 h-4 text-blue-600" /> Destination Office Selection & Manual Entry
               </label>
 
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-600 text-white shadow-2xs">
@@ -379,7 +384,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
               <div className="flex items-center gap-2">
                 <Tag className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <span>
-                  Suggested: <strong className="text-slate-900">{aiSuggestedOffice}</strong>
+                  AI Suggested: <strong className="text-slate-900">{aiSuggestedOffice}</strong>
                 </span>
               </div>
 
@@ -387,6 +392,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                 type="button"
                 onClick={() => {
                   setTargetOffice(aiSuggestedOffice)
+                  setIsCustomMode(false)
                   setIsAiOverridden(false)
                 }}
                 className="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] border border-blue-300 transition-colors"
@@ -395,15 +401,57 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
               </button>
             </div>
 
-            {/* Manual Target Office Override Dropdown */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Target Destination Office (Manual Selection / Override)
+            {/* Target Office Mode Toggle Header */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="block text-[11px] font-bold text-slate-800">
+                Target Office Name *
               </label>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCustomMode(!isCustomMode)
+                  if (!isCustomMode) setTargetOffice('')
+                }}
+                className="text-[10px] font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 underline"
+              >
+                {isCustomMode ? (
+                  <>
+                    <List className="w-3 h-3 text-blue-600" />
+                    <span>Select from Preset List</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="w-3 h-3 text-blue-600" />
+                    <span>Type Custom Office Name Manually</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Custom Text Input vs Dropdown Menu */}
+            {isCustomMode ? (
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. क्षेत्राधिकारी सदर / आंकिक शाखा / वाचक कार्यालय..."
+                  value={targetOffice}
+                  onChange={(e) => {
+                    setTargetOffice(e.target.value)
+                    setIsAiOverridden(true)
+                  }}
+                  className="w-full bg-white border border-blue-400 text-slate-900 font-bold text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                />
+                <p className="text-[10px] text-slate-500 font-medium">
+                  ✍️ Custom Manual Typing Mode: Type any specific office or officer title.
+                </p>
+              </div>
+            ) : (
               <select
                 value={targetOffice}
-                onChange={(e) => handleTargetChange(e.target.value)}
-                className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-blue-600"
+                onChange={(e) => handleTargetDropdownChange(e.target.value)}
+                className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-600"
               >
                 <option value="स्थापना शाखा (Establishment Wing)">स्थापना शाखा (Establishment Wing)</option>
                 <option value="क्राइम ब्रांच (Crime Branch)">क्राइम ब्रांच (Crime Branch)</option>
@@ -412,14 +460,15 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                 <option value="मालगोदाम / शस्त्रागार">मालगोदाम / शस्त्रागार</option>
                 <option value="रीडर शाखा (Reader Post)">रीडर शाखा (Reader Post)</option>
                 <option value="गोपनीय शाखा (Confidential Branch)">गोपनीय शाखा (Confidential Branch)</option>
+                <option value="CUSTOM_MANUAL_TYPE">✏️ Type Custom Office Name Manually...</option>
               </select>
+            )}
 
-              {isAiOverridden && (
-                <p className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 text-amber-600" /> Manual override active — AI learning updated for future scans!
-                </p>
-              )}
-            </div>
+            {isAiOverridden && (
+              <p className="text-[10px] text-amber-800 font-bold flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" /> Manual custom entry active — trains AI destination model!
+              </p>
+            )}
           </div>
 
           {/* Form Actions */}
