@@ -14,7 +14,8 @@ import {
   AlertCircle,
   VideoOff,
   Edit3,
-  List
+  List,
+  FlipHorizontal
 } from 'lucide-react'
 
 interface DaakEntry {
@@ -86,6 +87,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [snapshot, setSnapshot] = useState<string | null>(null)
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -109,22 +111,48 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
     setDaakNumber(`DAAK/2026/AYO-${randomNum}`)
   }, [])
 
-  // Start Live Camera Stream
-  const startCamera = async () => {
+  // Robust Camera Stream Activator with Multi-stage Fallbacks
+  const startCamera = async (overrideFacing?: 'user' | 'environment') => {
     setCameraError(null)
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Camera access is not supported on this browser or requires an HTTPS secure connection.')
+      setIsCameraActive(true) // Keep viewfinder active in simulation mode
+      return
+    }
+
+    // Stop existing stream if any
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+    }
+
+    const currentFacing = overrideFacing || facingMode
+
     try {
+      // Primary Attempt: Requested facing mode
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        video: { facingMode: currentFacing, width: { ideal: 1280 }, height: { ideal: 720 } }
       })
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
       setIsCameraActive(true)
-    } catch (err: any) {
-      console.warn('Webcam hardware access error:', err)
-      setCameraError('Camera access denied or device has no camera available. You can use simulation capture.')
-      setIsCameraActive(false)
+    } catch (err1: any) {
+      console.warn('Primary camera stream attempt failed, trying basic video constraint:', err1)
+      try {
+        // Fallback Attempt: Basic video constraint
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true })
+        streamRef.current = fallbackStream
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream
+        }
+        setIsCameraActive(true)
+      } catch (err2: any) {
+        console.warn('Fallback camera stream failed:', err2)
+        setCameraError('Camera hardware blocked or unavailable. Using Live Document Scanner Preview mode.')
+        setIsCameraActive(true) // Activate live document preview scanner
+      }
     }
   }
 
@@ -137,6 +165,12 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
     setIsCameraActive(false)
   }
 
+  const toggleCameraFacing = () => {
+    const newFacing = facingMode === 'environment' ? 'user' : 'environment'
+    setFacingMode(newFacing)
+    startCamera(newFacing)
+  }
+
   useEffect(() => {
     return () => {
       stopCamera()
@@ -147,7 +181,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
   const handleCaptureAndScan = () => {
     setIsScanning(true)
 
-    if (videoRef.current && canvasRef.current && isCameraActive) {
+    if (videoRef.current && canvasRef.current && streamRef.current) {
       const video = videoRef.current
       const canvas = canvasRef.current
       canvas.width = video.videoWidth || 640
@@ -252,28 +286,41 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                 <Camera className="w-4 h-4 text-blue-600" /> Live Document Viewfinder
               </label>
 
-              {!isCameraActive ? (
-                <button
-                  type="button"
-                  onClick={startCamera}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-colors"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Open Live Camera Scanner</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-colors"
-                >
-                  <VideoOff className="w-3.5 h-3.5" />
-                  <span>Close Camera</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {isCameraActive && (
+                  <button
+                    type="button"
+                    onClick={toggleCameraFacing}
+                    className="p-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors"
+                    title="Flip Camera (Front/Back)"
+                  >
+                    <FlipHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {!isCameraActive ? (
+                  <button
+                    type="button"
+                    onClick={() => startCamera()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Open Live Camera Scanner</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-colors"
+                  >
+                    <VideoOff className="w-3.5 h-3.5" />
+                    <span>Close Camera</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Error Banner */}
+            {/* Error / Notice Banner */}
             {cameraError && (
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -282,31 +329,38 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
             )}
 
             {/* Viewfinder Frame */}
-            <div className="relative w-full h-52 bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center shadow-inner">
+            <div className="relative w-full h-56 bg-slate-950 rounded-xl border-2 border-dashed border-slate-400 overflow-hidden flex items-center justify-center shadow-inner group">
               <canvas ref={canvasRef} className="hidden" />
 
-              {isCameraActive ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-              ) : snapshot ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${isCameraActive ? 'block' : 'hidden'}`}
+              />
+
+              {!isCameraActive && snapshot && (
                 <img src={snapshot} alt="Scanned Document" className="w-full h-full object-contain bg-slate-950" />
-              ) : (
-                <div className="text-center p-6 text-slate-400 space-y-2">
-                  <Camera className="w-10 h-10 mx-auto text-slate-500 opacity-60 animate-pulse" />
-                  <p className="font-bold text-slate-300 text-xs">Live Camera Stream Inactive</p>
-                  <p className="text-[11px] text-slate-400">Click "Open Live Camera Scanner" above or click "Capture & Read Daak" to simulate instant AI scan</p>
+              )}
+
+              {!isCameraActive && !snapshot && (
+                <div className="text-center p-6 text-slate-400 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-900/40 border border-blue-500/30 flex items-center justify-center mx-auto text-blue-400">
+                    <Camera className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-200 text-xs">Live Camera Stream Scanner Ready</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Click "Open Live Camera Scanner" above to activate device webcam, or click "Capture & Read Daak" below.</p>
+                  </div>
                 </div>
               )}
 
               {/* Scanning Overlay Effect */}
               {isScanning && (
-                <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-2xs flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
-                  <span className="text-xs font-extrabold text-white bg-slate-900/80 px-3 py-1 rounded-full border border-blue-400">
+                <div className="absolute inset-0 bg-blue-600/30 backdrop-blur-2xs flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="w-8 h-8 text-blue-300 animate-spin" />
+                  <span className="text-xs font-extrabold text-white bg-slate-900/90 px-3 py-1 rounded-full border border-blue-400 shadow-md">
                     AI Reading & Extracting Hindi OCR Text...
                   </span>
                 </div>
