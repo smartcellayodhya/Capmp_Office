@@ -5,7 +5,7 @@ import Tesseract from 'tesseract.js'
 import { processDualFontHindiText, extractSmartHindiSubjectSentence } from '@/lib/krutiDevConverter'
 import {
   X, Camera, Sparkles, Check, RefreshCw, Tag, BrainCircuit,
-  AlertCircle, VideoOff, Edit3, List, FlipHorizontal, Upload, Languages
+  AlertCircle, VideoOff, Edit3, List, FlipHorizontal, Upload, Languages, ZoomIn
 } from 'lucide-react'
 
 interface DaakEntry {
@@ -40,13 +40,43 @@ function getAiLearnedDestination(text: string): { office: string; confidence: nu
   if (t.includes('सुरक्षा') || t.includes('ड्यूटी') || t.includes('तयनाती') || t.includes('पर्व') || t.includes('वीआईपी')) {
     return { office: 'सुरक्षा शाखा (Security Wing)', confidence: 97 }
   }
-  if (t.includes('जनसुनवाई') || t.includes('शिकायत') || t.includes('igrs') || t.includes('ऑनलाइन')) {
+  if (t.includes('जनसुनवाई') || t.includes('शिकायत') || t.includes('ऑनलाइन')) {
     return { office: 'IGRS / जनसुनवाई सेल', confidence: 95 }
   }
   if (t.includes('मालखाना') || t.includes('शस्त्रागार') || t.includes('असलाह')) {
     return { office: 'मालगोदाम / शस्त्रागार', confidence: 99 }
   }
   return { office: 'रीडर शाखा (Reader Post)', confidence: 92 }
+}
+
+/**
+ * Preprocess image canvas for better OCR accuracy:
+ * 1. Convert to grayscale
+ * 2. Increase contrast sharply
+ * 3. Apply threshold to make text black on white
+ */
+function preprocessCanvasForOCR(canvas: HTMLCanvasElement): string {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return canvas.toDataURL('image/png')
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const data = imageData.data
+
+  for (let i = 0; i < data.length; i += 4) {
+    // Step 1: Grayscale using luminosity formula
+    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+
+    // Step 2: High contrast — push light pixels to white, dark pixels to black
+    const contrasted = gray > 128 ? 255 : 0
+
+    data[i] = contrasted
+    data[i + 1] = contrasted
+    data[i + 2] = contrasted
+    // alpha stays the same
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+  return canvas.toDataURL('image/png')
 }
 
 export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps) {
@@ -78,6 +108,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
     setDaakNumber(`DAAK/2026/AYO-${randomNum}`)
   }, [])
 
+  // HIGH RESOLUTION CAMERA — requests max quality for document OCR
   const startCamera = async (overrideFacing?: 'user' | 'environment') => {
     setCameraError(null)
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -86,21 +117,46 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
       return
     }
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
+
     const mode = overrideFacing || facingMode
+
+    // Request highest possible resolution for document scanning
+    const highResConstraints: MediaStreamConstraints = {
+      video: {
+        facingMode: { ideal: mode },
+        width: { ideal: 3840, min: 1280 },
+        height: { ideal: 2160, min: 720 },
+        frameRate: { ideal: 30, min: 15 },
+      }
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } })
+      const stream = await navigator.mediaDevices.getUserMedia(highResConstraints)
       streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.setAttribute('playsinline', 'true')
+      }
       setIsCameraActive(true)
     } catch {
+      // Fallback to standard HD
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: mode }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        })
         streamRef.current = stream
         if (videoRef.current) videoRef.current.srcObject = stream
         setIsCameraActive(true)
       } catch {
-        setCameraError('Camera unavailable. Please upload a photo.')
-        setIsCameraActive(true)
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+          streamRef.current = stream
+          if (videoRef.current) videoRef.current.srcObject = stream
+          setIsCameraActive(true)
+        } catch {
+          setCameraError('Camera unavailable. Please upload a photo of the document.')
+          setIsCameraActive(true)
+        }
       }
     }
   }
@@ -119,24 +175,32 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
 
   useEffect(() => () => stopCamera(), [])
 
-  const runOCR = async (imageDataUrl: string) => {
+  // Run Tesseract OCR on preprocessed image
+  const runOCR = async (rawImageDataUrl: string) => {
     setIsScanning(true)
     setCleanWords('')
     setSummary('')
     setSenderDept('')
+    setOcrProgress('Preparing image for OCR...')
 
     try {
-      const result = await Tesseract.recognize(imageDataUrl, 'hin+eng', {
+      // Step 1: Preprocess image for better OCR quality
+      // Load image into a temporary canvas and apply grayscale + high contrast
+      const processedDataUrl = await preprocessImageForOCR(rawImageDataUrl)
+
+      setOcrProgress('Running Hindi OCR...')
+
+      const result = await Tesseract.recognize(processedDataUrl, 'hin+eng', {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            setOcrProgress(`OCR Reading... ${Math.floor(m.progress * 100)}%`)
+            setOcrProgress(`Extracting Hindi Text... ${Math.floor(m.progress * 100)}%`)
           }
         }
       })
 
       const rawOCR = (result.data.text || '').trim()
 
-      // Process with dual font engine (Mangal / KrutiDev)
+      // Step 2: Dual font processing + aggressive Devanagari cleaning
       const { cleanText, detectedFont } = processDualFontHindiText(rawOCR)
       setDetectedFontType(detectedFont)
       setCleanWords(cleanText)
@@ -145,14 +209,11 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
       setDaakNumber(`DAAK/2026/AYO-${randomNum}`)
 
       if (cleanText.length > 5) {
-        // Sender detection
-        if (cleanText.includes('विधि विज्ञान')) {
-          setSenderDept('विधि विज्ञान प्रयोगशाला, लखनऊ')
-        } else if (cleanText.includes('कार्यालय')) {
-          setSenderDept('कार्यालय पुलिस अधीक्षक, अयोध्या')
-        } else {
-          setSenderDept('कार्यालय पुलिस अधीक्षक, अयोध्या')
-        }
+        setSenderDept(
+          cleanText.includes('विधि विज्ञान') ? 'विधि विज्ञान प्रयोगशाला, लखनऊ'
+          : cleanText.includes('कार्यालय') ? 'कार्यालय पुलिस अधीक्षक, अयोध्या'
+          : 'कार्यालय पुलिस अधीक्षक, अयोध्या'
+        )
 
         const subject = extractSmartHindiSubjectSentence(cleanText)
         setSummary(subject)
@@ -163,7 +224,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
         setAiConfidence(aiRoute.confidence)
       } else {
         setSenderDept('कार्यालय पुलिस अधीक्षक, अयोध्या')
-        setSummary('विषय: (कृपया मैन्युअल रूप से भरें — फोटो पढ़ने में त्रुटि)')
+        setSummary('विषय: (फोटो स्पष्ट नहीं — कृपया मैन्युअल रूप से भरें)')
         setAiSuggestedOffice('रीडर शाखा (Reader Post)')
         setTargetOffice('रीडर शाखा (Reader Post)')
         setAiConfidence(60)
@@ -176,22 +237,62 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
     }
   }
 
-  const handleCaptureAndScan = () => {
-    let dataUrl: string | null = null
-    if (videoRef.current && canvasRef.current && streamRef.current) {
-      const video = videoRef.current
-      const canvas = canvasRef.current
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        dataUrl = canvas.toDataURL('image/png')
-        setSnapshot(dataUrl)
+  // Preprocess image: load into canvas, apply grayscale + high contrast threshold
+  const preprocessImageForOCR = (rawDataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        // Scale up small images for better OCR accuracy (min 2000px wide)
+        const scale = img.width < 2000 ? Math.min(3, 2000 / img.width) : 1
+        canvas.width = img.width * scale
+        canvas.height = img.height * scale
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { resolve(rawDataUrl); return }
+
+        // Draw scaled image
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+        // Apply grayscale + high contrast preprocessing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const d = imageData.data
+
+        for (let i = 0; i < d.length; i += 4) {
+          // Grayscale using luminosity
+          const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+          // High contrast: threshold at 140 (slightly lower to catch light ink)
+          const contrasted = gray > 140 ? 255 : 0
+          d[i] = contrasted
+          d[i + 1] = contrasted
+          d[i + 2] = contrasted
+        }
+
+        ctx.putImageData(imageData, 0, 0)
+        resolve(canvas.toDataURL('image/png'))
       }
-    }
+      img.onerror = () => resolve(rawDataUrl)
+      img.src = rawDataUrl
+    })
+  }
+
+  const handleCaptureAndScan = () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+
+    // Capture at actual video resolution (high res)
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const dataUrl = canvas.toDataURL('image/png')
+    setSnapshot(dataUrl)
     stopCamera()
-    if (dataUrl) runOCR(dataUrl)
+    runOCR(dataUrl)
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -246,7 +347,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                 Digital Daak Register
                 <span className="px-2 py-0.5 rounded-full text-[9px] bg-blue-600 font-extrabold">AI OCR Engine</span>
               </h3>
-              <p className="text-[10px] text-slate-400">Mangal Unicode & KrutiDev 010 Auto-Detect</p>
+              <p className="text-[10px] text-slate-400">HD Camera + Image Enhancement + Dual Font AI</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 shrink-0">
@@ -260,7 +361,7 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-blue-600" /> Document Camera / Upload
+                <Camera className="w-4 h-4 text-blue-600" /> HD Document Scanner
               </span>
               <div className="flex items-center gap-2 flex-wrap">
                 <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileUpload} className="hidden" />
@@ -270,19 +371,19 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
                 </button>
                 {isCameraActive && (
                   <button type="button" onClick={toggleCameraFacing}
-                    className="p-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700">
+                    className="p-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700" title="Flip Camera">
                     <FlipHorizontal className="w-3.5 h-3.5" />
                   </button>
                 )}
                 {!isCameraActive ? (
                   <button type="button" onClick={() => startCamera()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">
-                    <Camera className="w-3.5 h-3.5" /> Open Camera
+                    <Camera className="w-3.5 h-3.5" /> Open HD Camera
                   </button>
                 ) : (
                   <button type="button" onClick={stopCamera}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs">
-                    <VideoOff className="w-3.5 h-3.5" /> Close Camera
+                    <VideoOff className="w-3.5 h-3.5" /> Close
                   </button>
                 )}
               </div>
@@ -294,35 +395,72 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
               </div>
             )}
 
-            {/* Viewfinder */}
-            <div className="relative w-full h-44 sm:h-52 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border-2 border-dashed border-slate-600">
+            {/* HD Viewfinder — full width, tall enough for document capture */}
+            <div className="relative w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-700"
+              style={{ aspectRatio: '4/3' }}>
               <canvas ref={canvasRef} className="hidden" />
+
+              {/* HD Video — object-cover fills the frame */}
               <video ref={videoRef} autoPlay playsInline muted
-                className={`w-full h-full object-cover ${isCameraActive ? 'block' : 'hidden'}`} />
+                className={`w-full h-full object-cover ${isCameraActive && streamRef.current ? 'block' : 'hidden'}`}
+                style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+              />
+
               {!isCameraActive && snapshot && (
-                <img src={snapshot} alt="Scanned Doc" className="w-full h-full object-contain" />
+                <img src={snapshot} alt="Scanned Doc" className="w-full h-full object-contain bg-slate-950" />
               )}
+
               {!isCameraActive && !snapshot && (
-                <div className="text-center space-y-2 p-4">
-                  <Camera className="w-8 h-8 text-slate-500 mx-auto animate-pulse" />
-                  <p className="text-slate-400 text-xs font-semibold">Open Camera or Upload Paper Photo</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 gap-3">
+                  <Camera className="w-10 h-10 text-slate-500 animate-pulse" />
+                  <div>
+                    <p className="text-slate-300 text-xs font-bold">HD Document Camera</p>
+                    <p className="text-slate-500 text-[10px] mt-1">Tap "Open HD Camera" — hold phone flat above paper for best scan</p>
+                  </div>
                 </div>
               )}
+
+              {/* Camera Guidelines overlay when active */}
+              {isCameraActive && !isScanning && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Corner guides */}
+                  <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-blue-400 rounded-tl-sm" />
+                  <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-blue-400 rounded-tr-sm" />
+                  <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-blue-400 rounded-bl-sm" />
+                  <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-blue-400 rounded-br-sm" />
+                  <div className="absolute bottom-2 left-0 right-0 text-center">
+                    <span className="text-[10px] text-blue-300 font-bold bg-slate-950/60 px-2 py-0.5 rounded-full">
+                      📄 Align document within guides — hold steady
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Scanning Overlay */}
               {isScanning && (
-                <div className="absolute inset-0 bg-blue-950/85 flex flex-col items-center justify-center gap-2 p-4">
-                  <RefreshCw className="w-7 h-7 text-blue-400 animate-spin" />
-                  <span className="text-xs font-extrabold text-white bg-blue-600/90 px-4 py-1.5 rounded-full">
+                <div className="absolute inset-0 bg-blue-950/85 flex flex-col items-center justify-center gap-3 p-4">
+                  <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+                  <span className="text-xs font-extrabold text-white bg-blue-600/90 px-4 py-1.5 rounded-full border border-blue-400">
                     {ocrProgress}
                   </span>
+                  <p className="text-[10px] text-blue-200">Grayscale + Contrast enhancement → Hindi OCR...</p>
                 </div>
               )}
             </div>
 
+            {/* Capture Button */}
             <button type="button" disabled={isScanning} onClick={handleCaptureAndScan}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 disabled:opacity-50">
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 disabled:opacity-50 shadow-md">
               <Sparkles className="w-4 h-4 text-amber-300" />
-              Capture & Extract Hindi Text
+              Capture & Extract Hindi Text (HD + AI)
             </button>
+
+            {/* Tips */}
+            <div className="grid grid-cols-3 gap-1.5 text-[9px] text-slate-500 font-semibold text-center">
+              <div className="bg-slate-100 rounded-lg p-1.5">📱 Hold phone flat above paper</div>
+              <div className="bg-slate-100 rounded-lg p-1.5">💡 Good lighting needed</div>
+              <div className="bg-slate-100 rounded-lg p-1.5">📄 Keep text inside guides</div>
+            </div>
           </div>
 
           {/* Form Fields */}
@@ -358,9 +496,9 @@ export function DaakRegisterModal({ onClose, onSuccess }: DaakRegisterModalProps
           {cleanWords.length > 0 && (
             <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-700 space-y-1">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Clean Devanagari Words Extracted ({detectedFontType}):
+                Recognized Hindi Words ({detectedFontType}):
               </p>
-              <p className="text-xs text-white font-medium leading-relaxed max-h-14 overflow-y-auto">
+              <p className="text-xs text-white font-medium leading-relaxed max-h-16 overflow-y-auto">
                 {cleanWords}
               </p>
             </div>
