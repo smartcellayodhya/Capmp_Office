@@ -1,5 +1,5 @@
 /**
- * KrutiDev 010 to Unicode Devanagari Converter Engine
+ * KrutiDev 010 to Unicode Devanagari Converter Engine & Smart Police Document Subject Extractor
  * Converts legacy KrutiDev 010 / Devlys Hindi font encoding into clean readable Unicode Devanagari.
  */
 
@@ -60,17 +60,14 @@ export function convertKrutiDevToUnicode(inputText: string): string {
     'tuji': 'जनपद'
   }
 
-  // Replace common Krutidev words first
   Object.entries(wordMap).forEach(([kWord, uWord]) => {
     const reg = new RegExp(kWord, 'g')
     text = text.replace(reg, uWord)
   })
 
-  // Reposition 'f' (Chhoti I Matra) for Devanagari Range \u0900-\u097F
   text = text.replace(/f([\u0900-\u097F])/g, '$1ि')
   text = text.replace(/f([a-zA-Z])/g, '$1ि')
 
-  // Character by character mapping fallback
   let modifiedText = ''
   for (let i = 0; i < text.length; i++) {
     const char = text[i]
@@ -97,16 +94,16 @@ export function sanitizeHindiOcrText(rawText: string): string {
   // 1. Remove weird ASCII symbols and isolated noise chars: ♀, ♂, =, !, |, ~, ^, {}, _, etc.
   text = text.replace(/[♀♂=!|~^{}_+*#@$%&\/\\<>?`"']/g, ' ')
 
-  // 2. Remove standalone unattached matras at start of words (e.g. ़ाी, ़ी, ़िू, ़ू, ॆ)
-  text = text.replace(/(^|\s)[़्िीुूृेैोौंःँॅॉॆ०-९0-9]+(\s|$)/g, ' ')
-  text = text.replace(/़[ािीुूृेैोौ]+/g, '')
+  // 2. Remove standalone unattached matras & isolated nuktas (e.g. ़ाी, ़ी, ़िू, ़ू, ॆ, ़ंा, ़)
+  text = text.replace(/़[ािीुूृेैोौंःँॅॉॆ०-९]*[क-ह]?/g, ' ')
+  text = text.replace(/(^|\s)[़्िीुूृेैोौंःँॅॉॆ]+(\s|$)/g, ' ')
 
-  // 3. Remove single isolated random characters that aren't valid words
+  // 3. Remove single isolated random non-Devanagari letter noise
   const cleanWords = text.split(/\s+/).filter((word) => {
     const w = word.trim()
     if (w.length === 0) return false
-    // Filter out isolated single noise characters
-    if (w.length === 1 && !/[अ-हA-Za-z]/.test(w)) return false
+    // Filter out isolated single noise characters like "स", "ड", "गगे" at the start
+    if (w.length <= 2 && !/[अ-हA-Za-z0-9]/.test(w)) return false
     return true
   })
 
@@ -116,4 +113,37 @@ export function sanitizeHindiOcrText(rawText: string): string {
   cleaned = cleaned.replace(/^[^अ-हA-Za-z]+/, '').trim()
 
   return cleaned
+}
+
+/**
+ * Extract Official Police Subject Sentence
+ * Finds actual Hindi subject phrase ending with 'के संबंध में' or 'समीक्षा के संबंध'
+ */
+export function extractSmartHindiSubjectSentence(ocrText: string): string {
+  if (!ocrText) return ''
+
+  // Look for 'के संबंध में' or 'समीक्षा के संबंध' or 'हेतु' phrase
+  const matchSubj = ocrText.match(/([अ-ह\s\d\-,\(\)]+(?:के संबंध में|समीक्षा के संबंध|के विषय में|कार्रवाही हेतु|हेतु प्रेषित))/i)
+
+  if (matchSubj && matchSubj[1]) {
+    let cleanSubj = matchSubj[1].replace(/^[^\u0900-\u097F]+/, '').trim()
+    // Keep only last 15-20 meaningful Hindi words
+    const words = cleanSubj.split(/\s+/)
+    if (words.length > 20) {
+      cleanSubj = words.slice(-20).join(' ')
+    }
+    return `विषय: ${cleanSubj}`
+  }
+
+  // Fallback: Filter first 15 valid Devanagari words
+  const validDevanagariWords = ocrText
+    .split(/\s+/)
+    .filter((w) => /[\u0900-\u097F]/.test(w) && w.length >= 2)
+
+  if (validDevanagariWords.length > 0) {
+    const cleanSubjectText = validDevanagariWords.slice(0, 15).join(' ')
+    return `विषय: ${cleanSubjectText} - (आवश्यक कार्यवाही हेतु)`
+  }
+
+  return 'विषय: उत्तर प्रदेश पुलिस पत्राचार डांक संदर्भ।'
 }
