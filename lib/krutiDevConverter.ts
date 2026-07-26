@@ -82,5 +82,38 @@ export function convertKrutiDevToUnicode(inputText: string): string {
     }
   }
 
-  return modifiedText
+  return sanitizeHindiOcrText(modifiedText)
+}
+
+/**
+ * Smart Hindi Devanagari OCR Text Sanitizer
+ * Strips out noise characters (♀, =, !, |, isolated broken matras) and cleans up OCR output.
+ */
+export function sanitizeHindiOcrText(rawText: string): string {
+  if (!rawText) return ''
+
+  let text = rawText
+
+  // 1. Remove weird ASCII symbols and isolated noise chars: ♀, ♂, =, !, |, ~, ^, {}, _, etc.
+  text = text.replace(/[♀♂=!|~^{}_+*#@$%&\/\\<>?`"']/g, ' ')
+
+  // 2. Remove standalone unattached matras at start of words (e.g. ़ाी, ़ी, ़िू, ़ू, ॆ)
+  text = text.replace(/(^|\s)[़्िीुूृेैोौंःँॅॉॆ०-९0-9]+(\s|$)/g, ' ')
+  text = text.replace(/़[ािीुूृेैोौ]+/g, '')
+
+  // 3. Remove single isolated random characters that aren't valid words
+  const cleanWords = text.split(/\s+/).filter((word) => {
+    const w = word.trim()
+    if (w.length === 0) return false
+    // Filter out isolated single noise characters
+    if (w.length === 1 && !/[अ-हA-Za-z]/.test(w)) return false
+    return true
+  })
+
+  let cleaned = cleanWords.join(' ').replace(/\s+/g, ' ').trim()
+
+  // 4. Ensure Devanagari text is clean without leading/trailing symbols
+  cleaned = cleaned.replace(/^[^अ-हA-Za-z]+/, '').trim()
+
+  return cleaned
 }
