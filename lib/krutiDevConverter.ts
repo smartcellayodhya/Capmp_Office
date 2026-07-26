@@ -1,212 +1,192 @@
 /**
- * Dual Font Engine: Mangal Devanagari Unicode & KrutiDev 010 Auto-Detector & Police Dictionary Sanitizer
+ * Dual Font Engine: Mangal Devanagari Unicode & KrutiDev 010 Auto-Detector
+ * + Aggressive Police Document OCR Cleaner
  */
 
+const krutiDevWordMap: Record<string, string> = {
+  'vkj{kh': 'आरक्षी',
+  'fujh{kd': 'निरीक्षक',
+  'Fkkuk': 'थाना',
+  'vijk/k': 'अपराध',
+  'lsok': 'सेवा',
+  'dk;kZy;': 'कार्यालय',
+  'iqfyl': 'पुलिस',
+  'v/kh{kd': 'अधीक्षक',
+  'eqdnek': 'मुकदमा',
+  'fobspuk': 'विवेचना',
+  'ljq{kk': 'सुरक्षा',
+  'M~;wVh': 'ड्यूटी',
+  'NqV~Vh': 'छुट्टी',
+  'vodk': 'अवकाश',
+  'osru': 'वेतन',
+  'izHkkjh': 'प्रभारी',
+  'izkFkZuk': 'प्रार्थना',
+  'fo"k;': 'विषय',
+  'v;ks/;k': 'अयोध्या',
+  'tuji': 'जनपद',
+  'dk;ZOkgh': 'कार्यवाही',
+  'gsrq': 'हेतु',
+  'i=': 'पत्र',
+  'ee': 'में',
+}
+
 const krutiDevArray = [
-  "ñ", "Q+", "q+", "yk+", "y+", "j+", "r+", "s+", "t+", "k+", "n+", "o+", "b+", "m+", "i+", "A+", "µ",
-  "à", "á", "â", "ä", "å", "æ", "ç", "è", "é", "ê", "ë", "ì", "í", "î", "ï", "ð", "ñ", "ò", "ó", "ô", "õ", "ö", "÷",
-  "ø", "ù", "ú", "û", "ü", "ý", "þ", "ÿ",
-  "ñ", "Q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]",
-  "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'",
-  "z", "x", "c", "v", "b", "n", "m", ",", ".", "/",
-  "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "{", "}",
-  "A", "S", "D", "F", "G", "H", "J", "K", "L", ":", "\"",
-  "Z", "X", "C", "V", "B", "N", "M", "<", ">", "?",
-  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+  "ñ","Q+","q+","yk+","y+","j+","r+","s+","t+","k+","n+","o+","b+","m+","i+","A+","µ",
+  "à","á","â","ä","å","æ","ç","è","é","ê","ë","ì","í","î","ï","ð","ñ","ò","ó","ô","õ","ö","÷",
+  "ø","ù","ú","û","ü","ý","þ","ÿ",
+  "ñ","Q","w","e","r","t","y","u","i","o","p","[","]",
+  "a","s","d","f","g","h","j","k","l",";","'",
+  "z","x","c","v","b","n","m",",",".","/",
+  "Q","W","E","R","T","Y","U","I","O","P","{","}",
+  "A","S","D","F","G","H","J","K","L",":","\"",
+  "Z","X","C","V","B","N","M","<",">","?",
+  "0","1","2","3","4","5","6","7","8","9"
 ]
 
 const unicodeArray = [
-  "ऽ", "फ़", "क़", "ख़", "ग़", "ज़", "ड़", "ढ़", "फ़", "क", "न", "य", "ब", "म", "इ", "अ", "मं",
-  "्र", "रू", "रू", "हृ", "द्व", "द्य", "द्घ", "द्ब", "द्ध", "द्द", "ट्ट", "ट्ठ", "ड्डे", "ड्ढ", "ह्न", "ह्य", "हृ", "ह्म", "ह्ल", "ह्व", "्", "्", "्", "्",
-  "्", "्", "्", "्", "्", "्", "्", "्",
-  "ऽ", "ु", "ू", "ा", "ी", "ी", "ब", "ह", "ग", "द", "ज", "ड", "़",
-  "ं", "े", "क्", "ि", "ह", "ी", "र", "ा", "स", "य", "श्",
-  "्र", "ग", "ब", "त", "इ", "द", "म", "्", "्", "्",
-  "फ", "ू", "ा", "ी", "ी", "ब", "ह", "ग", "द", "ज", "ड", "़",
-  "ं", "े", "क्", "ि", "ह", "ी", "र", "ा", "स", "य", "श्",
-  "्र", "ग", "ब", "त", "इ", "द", "म", "्", "्", "्",
-  "०", "१", "२", "३", "४", "५", "६", "७", "८", "९"
+  "ऽ","फ़","क़","ख़","ग़","ज़","ड़","ढ़","फ़","क","न","य","ब","म","इ","अ","मं",
+  "्र","रू","रू","हृ","द्व","द्य","द्घ","द्ब","द्ध","द्द","ट्ट","ट्ठ","ड्डे","ड्ढ","ह्न","ह्य","हृ","ह्म","ह्ल","ह्व","्","्","्","्",
+  "्","्","्","्","्","्","्","्",
+  "ऽ","ु","ू","ा","ी","ी","ब","ह","ग","द","ज","ड","़",
+  "ं","े","क्","ि","ह","ी","र","ा","स","य","श्",
+  "्र","ग","ब","त","इ","द","म","्","्","्",
+  "फ","ू","ा","ी","ी","ब","ह","ग","द","ज","ड","़",
+  "ं","े","क्","ि","ह","ी","र","ा","स","य","श्",
+  "्र","ग","ब","त","इ","द","म","्","्","्",
+  "०","१","२","३","४","५","६","७","८","९"
 ]
 
-// Common UP Police Official Dictionary Replacements
-const POLICE_VOCAB_REPAIRS: Record<string, string> = {
-  'सम्बन्ध': 'संबंध',
-  'निर्माणाधीन': 'निर्माणाधीन',
-  'प्रयोगशालाओं': 'प्रयोगशालाओं',
-  'कार्यदायी': 'कार्यदायी',
-  'सूचनार्ड': 'सूचनार्थ',
-  'सूचनार्ड्': 'सूचनार्थ',
-  'समीक्षा': 'समीक्षा',
-  'उपलब्ध': 'उपलब्ध',
-  'भूमि': 'भूमि',
-  'कब्जा': 'कब्ज़ा',
-  'प्रगति': 'प्रगति',
-  'कार्रवाही': 'कार्यवाही'
+// Minimum meaningful Hindi word length (characters in Devanagari)
+const MIN_HINDI_WORD_DEVANAGARI_CHARS = 2
+
+/**
+ * A word is "pure Devanagari" if it has ≥2 Devanagari chars AND
+ * the ratio of Devanagari chars to total chars is > 0.6
+ */
+function isPureDevanagariWord(word: string): boolean {
+  if (!word || word.trim().length === 0) return false
+  const w = word.trim()
+  const devChars = (w.match(/[\u0900-\u097F]/g) || []).length
+  const totalChars = w.replace(/\s/g, '').length
+  if (devChars < MIN_HINDI_WORD_DEVANAGARI_CHARS) return false
+  return (devChars / totalChars) >= 0.6
 }
 
 /**
- * Dual Font Processor:
- * Auto-detects if input text is Mangal Unicode or KrutiDev 010.
- * Preserves Mangal text cleanly without corrupting Devanagari characters!
+ * Auto-detects whether raw OCR text is Mangal Unicode or KrutiDev 010.
+ * Returns cleaned text and detected font type.
  */
-export function processDualFontHindiText(inputText: string): { cleanText: string; detectedFont: 'Mangal Unicode' | 'KrutiDev 010' } {
-  if (!inputText) return { cleanText: '', detectedFont: 'Mangal Unicode' }
+export function processDualFontHindiText(rawText: string): {
+  cleanText: string
+  detectedFont: 'Mangal Unicode' | 'KrutiDev 010'
+} {
+  if (!rawText || rawText.trim().length === 0) {
+    return { cleanText: '', detectedFont: 'Mangal Unicode' }
+  }
 
-  const text = inputText.trim()
-
-  // Count Devanagari Unicode characters (\u0900-\u097F) vs ASCII letters
-  const devanagariCount = (text.match(/[\u0900-\u097F]/g) || []).length
+  const text = rawText.trim()
+  const devCount = (text.match(/[\u0900-\u097F]/g) || []).length
   const asciiCount = (text.match(/[a-zA-Z]/g) || []).length
 
-  // If Devanagari count is dominant, it is ALREADY MANGAL UNICODE!
-  if (devanagariCount > asciiCount || /[vkj{kh|fujh{kd|Fkkuk|vijk/k]/.test(text) === false) {
-    if (devanagariCount > 5) {
-      const sanitizedMangal = sanitizeHindiOcrText(text)
-      return { cleanText: repairPoliceVocabulary(sanitizedMangal), detectedFont: 'Mangal Unicode' }
-    }
+  let cleaned: string
+  let font: 'Mangal Unicode' | 'KrutiDev 010'
+
+  if (devCount >= asciiCount || devCount > 10) {
+    // Likely Mangal Unicode — just sanitize aggressively
+    cleaned = aggressiveDevanagariCleaner(text)
+    font = 'Mangal Unicode'
+  } else {
+    // Likely KrutiDev 010 — convert first, then clean
+    cleaned = aggressiveDevanagariCleaner(convertKrutiDevToUnicode(text))
+    font = 'KrutiDev 010'
   }
 
-  // Otherwise convert KrutiDev 010 ASCII to Unicode
-  const converted = convertKrutiDevToUnicode(text)
-  return { cleanText: repairPoliceVocabulary(converted), detectedFont: 'KrutiDev 010' }
+  return { cleanText: cleaned, detectedFont: font }
 }
 
-export function convertKrutiDevToUnicode(inputText: string): string {
-  if (!inputText) return ''
-
+function convertKrutiDevToUnicode(inputText: string): string {
   let text = inputText
-
-  const wordMap: Record<string, string> = {
-    'vkj{kh': 'आरक्षी',
-    'fujh{kd': 'निरीक्षक',
-    'Fkkuk': 'थाना',
-    'vijk/k': 'अपराध',
-    'lsok': 'सेवा',
-    'ee': 'में',
-    'dk;kZy;': 'कार्यालय',
-    'iqfyl': 'पुलिस',
-    'v/kh{kd': 'अधीक्षक',
-    'eqdnek': 'मुकदमा',
-    'fobspuk': 'विवेचना',
-    'ljq{kk': 'सुरक्षा',
-    'M~;wVh': 'ड्यूटी',
-    'NqV~Vh': 'छुट्टी',
-    'vodk': 'अवकाश',
-    'osru': 'वेतन',
-    'izHkkjh': 'प्रभारी',
-    'izkFkZuk': 'प्रार्थना',
-    'i=': 'पत्र',
-    'fo"k;': 'विषय',
-    'v;ks/;k': 'अयोध्या',
-    'tuji': 'जनपद'
-  }
-
-  Object.entries(wordMap).forEach(([kWord, uWord]) => {
-    const reg = new RegExp(kWord, 'g')
-    text = text.replace(reg, uWord)
+  Object.entries(krutiDevWordMap).forEach(([k, v]) => {
+    text = text.replace(new RegExp(k, 'g'), v)
   })
-
   text = text.replace(/f([\u0900-\u097F])/g, '$1ि')
-  text = text.replace(/f([a-zA-Z])/g, '$1ि')
 
-  let modifiedText = ''
+  let result = ''
   for (let i = 0; i < text.length; i++) {
     const char = text[i]
     const idx = krutiDevArray.indexOf(char)
-    if (idx !== -1 && unicodeArray[idx]) {
-      modifiedText += unicodeArray[idx]
-    } else {
-      modifiedText += char
-    }
+    result += idx !== -1 && unicodeArray[idx] ? unicodeArray[idx] : char
   }
-
-  return sanitizeHindiOcrText(modifiedText)
+  return result
 }
 
 /**
- * Smart Hindi Devanagari OCR Text Sanitizer
+ * Aggressive Devanagari OCR Cleaner:
+ * 1. Splits on whitespace + removes tokens that are NOT pure Hindi words
+ * 2. Removes tokens mixing Latin letters + Devanagari (OCR artifacts)
+ * 3. Keeps only words with ≥ 60% Devanagari character ratio
+ * 4. Removes standalone matra artifacts (़ि ा ी etc)
  */
-export function sanitizeHindiOcrText(rawText: string): string {
+export function aggressiveDevanagariCleaner(rawText: string): string {
   if (!rawText) return ''
 
+  // Step 1: Remove ASCII-only noise tokens and punctuation except danda
+  // Keep: Devanagari chars, spaces, numbers ०-९, danda ।
   let text = rawText
+    .replace(/[♀♂@#$%^&*_+=\[\]{}<>?`"~\\]/g, ' ') // junk symbols
+    .replace(/[0-9]+/g, ' ')                           // English digits
+    .replace(/[A-Za-z]+/g, ' ')                        // English letters (artifacts)
 
-  // 1. Remove weird ASCII noise & isolated non-Devanagari symbols
-  text = text.replace(/[♀♂=!|~^{}_+*#@$%&\/\\<>?`"']/g, ' ')
+  // Step 2: Remove dangling matras not attached to consonants
+  text = text
+    .replace(/[़ािीुूृेैोौंःँॅॉॆ]{1,3}(?=\s|$)/g, ' ')
+    .replace(/^[़ािीुूृेैोौंःँॅॉॆ\s]+/g, ' ')
 
-  // 2. Remove standalone unattached matras & isolated nuktas
-  text = text.replace(/़[ािीुूृेैोौंःँॅॉॆ०-९]*[क-ह]?/g, ' ')
-  text = text.replace(/(^|\s)[़्िीुूृेैोौंःँॅॉॆ]+(\s|$)/g, ' ')
-
-  // 3. Remove isolated single noise characters at start (e.g. "गू", "इब", "तूम", "ले") if followed by valid Hindi
-  const words = text.split(/\s+/).filter((w) => w.trim().length > 0)
-  
-  // Find index of first meaningful Devanagari word (e.g., 'निर्माण', 'कार्य', 'प्रयोगशाला', 'विधि', 'सम्बन्ध', 'कार्यालय')
-  const meaningfulIdx = words.findIndex((w) => 
-    w.includes('निर्माण') || 
-    w.includes('कार्य') || 
-    w.includes('प्रयोगशाला') || 
-    w.includes('विधि') || 
-    w.includes('सम्बन्ध') || 
-    w.includes('संबंध') || 
-    w.includes('प्रगति') || 
-    w.includes('कार्यालय') || 
-    w.includes('पुलिस') || 
-    w.includes('थाना') ||
-    w.includes('हेतु') ||
-    w.includes('पत्र') ||
-    w.includes('समीक्षा')
-  )
-
-  const cleanWords = (meaningfulIdx !== -1 && meaningfulIdx > 0 && meaningfulIdx < 5) 
-    ? words.slice(meaningfulIdx) 
-    : words
-
-  let cleaned = cleanWords.join(' ').replace(/\s+/g, ' ').trim()
-  cleaned = cleaned.replace(/^[^अ-हA-Za-z]+/, '').trim()
-
-  return cleaned
-}
-
-/**
- * Repair common UP Police OCR spelling typos using dictionary
- */
-export function repairPoliceVocabulary(text: string): string {
-  if (!text) return ''
-  let repaired = text
-  Object.entries(POLICE_VOCAB_REPAIRS).forEach(([bad, good]) => {
-    const reg = new RegExp(bad, 'g')
-    repaired = repaired.replace(reg, good)
+  // Step 3: Keep only tokens that have ≥ 2 Devanagari characters
+  const tokens = text.split(/\s+/)
+  const cleanTokens = tokens.filter((token) => {
+    const t = token.trim()
+    if (!t) return false
+    const devChars = (t.match(/[\u0900-\u097F]/g) || []).length
+    return devChars >= 2
   })
-  return repaired
+
+  return cleanTokens.join(' ').replace(/\s+/g, ' ').trim()
 }
 
 /**
  * Extract Official Police Subject Sentence
+ * Looks for "के संबंध में" / "सम्बन्ध में" / "हेतु" pattern in clean text.
  */
-export function extractSmartHindiSubjectSentence(ocrText: string): string {
-  if (!ocrText) return ''
-
-  // Look for exact Subject pattern with 'सम्बन्ध में' / 'संबंध में' / 'समीक्षा के संबंध'
-  const matchSubj = ocrText.match(/([अ-ह\s\d\-,\(\)]+(?:के सम्बन्ध में|के संबंध में|समीक्षा के संबंध|के विषय में|कार्रवाही हेतु|हेतु प्रेषित))/i)
-
-  if (matchSubj && matchSubj[1]) {
-    let cleanSubj = matchSubj[1].replace(/^[^\u0900-\u097F]+/, '').trim()
-    const words = cleanSubj.split(/\s+/)
-    if (words.length > 20) {
-      cleanSubj = words.slice(-20).join(' ')
-    }
-    return `विषय: ${cleanSubj}`
+export function extractSmartHindiSubjectSentence(cleanOcrText: string): string {
+  if (!cleanOcrText || cleanOcrText.trim().length < 5) {
+    return 'विषय: आवश्यक कार्यवाही हेतु पत्र।'
   }
 
-  // Fallback: Filter first 15 valid Devanagari words
-  const validDevanagariWords = ocrText
-    .split(/\s+/)
-    .filter((w) => /[\u0900-\u097F]/.test(w) && w.length >= 2)
+  // Try: extract sentence containing key official subject markers
+  const subjectPatterns = [
+    /([^\।।]*(?:के संबंध में|के सम्बन्ध में|समीक्षा के संबंध|के विषय में)[^\।।]*)/,
+    /([^\।।]*(?:हेतु प्रेषित|कार्यवाही हेतु|कार्रवाही हेतु)[^\।।]*)/,
+    /([^\।।]*(?:विधि विज्ञान|प्रयोगशाला|निर्माण)[^\।।]*)/,
+  ]
 
-  if (validDevanagariWords.length > 0) {
-    const cleanSubjectText = validDevanagariWords.slice(0, 15).join(' ')
-    return `विषय: ${cleanSubjectText} - (आवश्यक कार्यवाही हेतु)`
+  for (const pattern of subjectPatterns) {
+    const match = cleanOcrText.match(pattern)
+    if (match && match[1]) {
+      const subj = match[1].replace(/^[^अ-ह]+/, '').trim()
+      if (subj.length > 10) {
+        return `विषय: ${subj}`
+      }
+    }
+  }
+
+  // Fallback: take first 15 pure Devanagari words
+  const pureHindiWords = cleanOcrText
+    .split(/\s+/)
+    .filter((w) => (w.match(/[\u0900-\u097F]/g) || []).length >= 2)
+
+  if (pureHindiWords.length > 0) {
+    return `विषय: ${pureHindiWords.slice(0, 15).join(' ')} (आवश्यक कार्यवाही हेतु)`
   }
 
   return 'विषय: उत्तर प्रदेश पुलिस पत्राचार डांक संदर्भ।'
