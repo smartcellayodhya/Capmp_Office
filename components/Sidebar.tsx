@@ -10,6 +10,7 @@ import {
   Building2,
   FileText,
   Award,
+  Camera,
   ChevronRight,
   ChevronLeft
 } from 'lucide-react'
@@ -42,6 +43,12 @@ export function Sidebar() {
       href: '/dashboard/staff',
       icon: Building2,
       badge: null
+    },
+    {
+      name: 'Digital Daak Scanner',
+      href: '/dashboard/daak',
+      icon: Camera,
+      badge: 'AI Scan'
     },
     {
       name: 'Transfers',
